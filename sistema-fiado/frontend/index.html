@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 🔥 FIREBASE (CORRIGIDO) -->
+    <!-- 🔥 FIREBASE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } 
@@ -31,233 +31,162 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
-        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; background-color: #0f172a; color: #e2e8f0; }
-        .font-mono { font-family: 'JetBrains+Mono', monospace; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .input-glow:focus { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); border-color: #10b981; }
-        .btn-gradient { background: linear-gradient(180deg, #10b981 0%, #059669 100%); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .btn-gradient:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4); }
-        .card-cliente { transition: all 0.2s ease; }
-        .card-cliente:hover { transform: scale(1.01); background-color: #1e293b; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
     </style>
 </head>
-<body class="custom-scroll min-h-screen">
+<body class="min-h-screen">
 
-    <div id="lockScreen" class="fixed inset-0 bg-[#0b1222] z-[100] flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center relative overflow-hidden">
-            <div class="relative bg-[#1e293b] p-4 rounded-2xl border border-slate-700 text-emerald-500 inline-block mb-6">
-                <i data-lucide="shield-check" class="w-10 h-10"></i>
-            </div>
-            <h2 class="text-3xl font-bold text-white mb-8">Acesso Restrito</h2>
-            <input id="keyInput" type="password" placeholder="Licença de Acesso" class="w-full bg-[#0f172a]/80 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none mb-4 input-glow">
-            <button onclick="autenticarKey()" class="btn-gradient w-full p-4 rounded-2xl font-bold text-white">Ativar Sistema</button>
-        </div>
+<div class="max-w-5xl mx-auto p-6">
+
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <input id="inNome" placeholder="Nome" class="bg-slate-800 p-3 rounded">
+        <input id="inApelido" placeholder="Apelido" class="bg-slate-800 p-3 rounded">
+        <input id="inTel" placeholder="Telefone" class="bg-slate-800 p-3 rounded">
+        <input id="inVenc" type="number" placeholder="Vencimento" class="bg-slate-800 p-3 rounded">
+        <button onclick="cadastrarCliente()" class="bg-green-600 p-3 rounded">Salvar</button>
     </div>
 
-    <div class="max-w-5xl mx-auto p-4 md:p-8">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-            <div>
-                <h1 class="text-4xl font-black flex items-center gap-3 text-white tracking-tight">
-                    <i data-lucide="wallet" class="text-emerald-500 w-10 h-10"></i> FIADO PRO
-                </h1>
-                <p class="text-slate-400 mt-1 flex items-center gap-2">
-                    <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Terminal de Operações
-                </p>
-            </div>
-            <div class="flex gap-4 w-full md:w-auto">
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex-1 min-w-[140px]">
-                    <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">A Receber</p>
-                    <h2 id="dashTotal" class="text-2xl font-bold text-emerald-400">R$ 0,00</h2>
-                </div>
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex-1 min-w-[140px]">
-                    <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Atrasados</p>
-                    <h2 id="dashAtrasados" class="text-2xl font-bold text-rose-500">0</h2>
-                </div>
-                <button onclick="logout()" class="p-4 bg-slate-800 hover:bg-rose-500/20 hover:text-rose-500 text-slate-400 rounded-2xl border border-slate-700 transition-all">
-                    <i data-lucide="log-out" class="w-6 h-6"></i>
-                </button>
-            </div>
-        </header>
+    <input id="inputBusca" oninput="render()" placeholder="Buscar..." class="w-full bg-slate-800 p-3 rounded mb-6">
 
-        <section class="glass-card p-6 rounded-3xl mb-10">
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <input id="inNome" placeholder="Nome Completo *" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <input id="inApelido" placeholder="Apelido" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <input id="inTel" type="tel" placeholder="WhatsApp" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <input id="inVenc" type="number" min="1" max="31" placeholder="Vencimento (Dia)" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <button onclick="cadastrarCliente()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-2">
-                    <i data-lucide="save" class="w-4 h-4"></i> Salvar
-                </button>
-            </div>
-        </section>
+    <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
-        <div class="relative mb-8">
-            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"></i>
-            <input id="inputBusca" oninput="render()" placeholder="Buscar cliente por nome ou apelido..." class="w-full bg-[#1e293b]/50 border border-slate-700 p-5 pl-14 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-lg shadow-2xl">
-        </div>
+</div>
 
-        <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
+<!-- MODAL VENDA -->
+<div id="modalVenda" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center">
+    <div class="bg-slate-800 p-6 rounded w-full max-w-md">
+        <h2 class="mb-4">Nova Venda</h2>
+        <input id="vendaProd" placeholder="Produto" class="w-full p-2 mb-2 bg-slate-700 rounded">
+        <input id="vendaQtd" type="number" value="1" class="w-full p-2 mb-2 bg-slate-700 rounded">
+        <input id="vendaPreco" type="number" placeholder="Preço" class="w-full p-2 mb-4 bg-slate-700 rounded">
+        <button onclick="concluirVenda()" class="bg-green-600 p-2 w-full rounded">Confirmar</button>
     </div>
+</div>
+
+<!-- MODAL PAGAMENTO -->
+<div id="modalPaga" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center">
+    <div class="bg-slate-800 p-6 rounded w-full max-w-md">
+        <h2 class="mb-4">Pagamento</h2>
+        <input id="pagaValor" type="number" placeholder="Valor" class="w-full p-2 mb-4 bg-slate-700 rounded">
+        <button onclick="confirmarPagamento()" class="bg-green-600 p-2 w-full rounded">Confirmar</button>
+    </div>
+</div>
 
 <script>
 let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
+let idAtual = null;
 
 window.onload = () => {
-    if(localStorage.getItem('ka_session')) {
-        document.getElementById('lockScreen').remove();
-    }
-
-    lucide.createIcons();
     render();
-    atualizarDashboard();
-
-    setTimeout(() => {
-        carregarFirebase();
-    }, 500);
+    carregarFirebase();
 };
-
-function autenticarKey() {
-    if(document.getElementById('keyInput').value.length > 2) {
-        localStorage.setItem('ka_session', '1');
-        document.getElementById('lockScreen').remove();
-    }
-}
-
-function logout() { 
-    if(confirm("Sair do sistema?")) { 
-        localStorage.removeItem('ka_session'); 
-        location.reload(); 
-    } 
-}
 
 function salvar() {
     localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-
-    setTimeout(() => {
-        salvarFirebase();
-    }, 100);
-
-    render(); 
-    atualizarDashboard();
+    salvarFirebase();
+    render();
 }
 
 async function salvarFirebase() {
-    if (!window.db || !window.fb) return;
+    if (!window.db) return;
 
-    try {
-        const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
+    const snapshot = await fb.getDocs(fb.collection(db, "clientes"));
 
-        for (const d of snapshot.docs) {
-            await window.fb.deleteDoc(window.fb.doc(window.db, "clientes", d.id));
-        }
+    for (const d of snapshot.docs) {
+        await fb.deleteDoc(fb.doc(db, "clientes", d.id));
+    }
 
-        for (let c of clientes) {
-            await window.fb.addDoc(window.fb.collection(window.db, "clientes"), c);
-        }
-
-    } catch (e) {
-        console.log("Erro Firebase:", e);
+    for (let c of clientes) {
+        await fb.addDoc(fb.collection(db, "clientes"), c);
     }
 }
 
 async function carregarFirebase() {
-    if (!window.db || !window.fb) return;
-
-    try {
-        const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
-        const dados = snapshot.docs.map(doc => doc.data());
-
-        if (dados.length > 0) {
-            clientes = dados;
-            localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-            render();
-            atualizarDashboard();
-        }
-    } catch (e) {
-        console.log("Erro ao carregar Firebase:", e);
-    }
+    const snapshot = await fb.getDocs(fb.collection(db, "clientes"));
+    clientes = snapshot.docs.map(d => d.data());
+    render();
 }
 
 function cadastrarCliente() {
-    const nome = document.getElementById('inNome').value;
-    const venc = document.getElementById('inVenc').value;
+    const nome = inNome.value;
+    const venc = inVenc.value;
 
-    if(!nome || !venc) return alert("Preencha Nome e Vencimento!");
+    if(!nome || !venc) return;
 
-    clientes.push({ 
-        id: Date.now(), 
-        nome, 
-        apelido: document.getElementById('inApelido').value,
-        telefone: document.getElementById('inTel').value,
+    clientes.push({
+        id: Date.now(),
+        nome,
+        apelido: inApelido.value,
+        telefone: inTel.value,
         vencimento: parseInt(venc),
-        saldo: 0, 
-        totalComprado: 0, 
-        totalPago: 0, 
-        historico: [] 
+        saldo: 0,
+        historico: []
     });
 
-    ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
     salvar();
 }
 
-function render() {
-    const container = document.getElementById('listaClientes');
-    const busca = document.getElementById('inputBusca').value.toLowerCase();
-    container.innerHTML = "";
-
-    clientes.filter(c => 
-        c.nome.toLowerCase().includes(busca) || 
-        (c.apelido && c.apelido.toLowerCase().includes(busca))
-    ).forEach(c => {
-        container.innerHTML += `
-            <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center group animate-fade-in shadow-lg">
-                <div class="flex-1">
-                    <h4 class="font-bold text-lg text-white uppercase">${c.nome}</h4>
-                    <p class="text-xs text-slate-500 font-bold">Saldo: R$ ${c.saldo.toFixed(2)}</p>
-                </div>
-
-                <div class="flex gap-2">
-                    <button onclick="alert('Função venda não implementada')" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl">
-                        <i data-lucide="plus-circle" class="w-5 h-5"></i>
-                    </button>
-
-                    <button onclick="alert('Função pagamento não implementada')" class="p-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl">
-                        <i data-lucide="dollar-sign" class="w-5 h-5"></i>
-                    </button>
-
-                    <button onclick="excluirCliente(${c.id})" class="p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl">
-                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-
-    lucide.createIcons();
+function abrirVenda(id){
+    idAtual = id;
+    document.getElementById('modalVenda').classList.remove('hidden');
 }
 
-function excluirCliente(id) {
-    if(!confirm("Apagar cliente?")) return;
+function concluirVenda(){
+    const c = clientes.find(x => x.id === idAtual);
+    const preco = parseFloat(vendaPreco.value);
+    const qtd = parseInt(vendaQtd.value);
+
+    if(!preco) return;
+
+    const total = preco * qtd;
+    c.saldo += total;
+
+    document.getElementById('modalVenda').classList.add('hidden');
+    salvar();
+}
+
+function abrirPagamento(id){
+    idAtual = id;
+    document.getElementById('modalPaga').classList.remove('hidden');
+}
+
+function confirmarPagamento(){
+    const c = clientes.find(x => x.id === idAtual);
+    const valor = parseFloat(pagaValor.value);
+
+    if(!valor) return;
+
+    c.saldo -= valor;
+
+    document.getElementById('modalPaga').classList.add('hidden');
+    salvar();
+}
+
+function excluirCliente(id){
     clientes = clientes.filter(c => c.id !== id);
     salvar();
 }
 
-function atualizarDashboard() {
-    let total = 0, atrasados = 0;
-    const hoje = new Date().getDate();
+function render(){
+    const busca = inputBusca.value.toLowerCase();
+    listaClientes.innerHTML = "";
 
-    clientes.forEach(c => {
-        total += c.saldo;
-        if(c.saldo > 0 && hoje > c.vencimento) atrasados++;
+    clientes.filter(c => c.nome.toLowerCase().includes(busca))
+    .forEach(c => {
+        listaClientes.innerHTML += `
+            <div class="bg-slate-800 p-4 rounded flex justify-between items-center">
+                <div>
+                    <h3>${c.nome}</h3>
+                    <p>Saldo: R$ ${c.saldo.toFixed(2)}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="abrirVenda(${c.id})">➕</button>
+                    <button onclick="abrirPagamento(${c.id})">💲</button>
+                    <button onclick="excluirCliente(${c.id})">🗑</button>
+                </div>
+            </div>
+        `;
     });
-
-    document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2)}`;
-    document.getElementById('dashAtrasados').innerText = atrasados;
 }
 </script>
 
