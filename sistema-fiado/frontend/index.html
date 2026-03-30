@@ -102,10 +102,47 @@
         </div>
 
         <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
+
+        <section id="secaoDetalhes" class="hidden glass-card p-6 rounded-3xl animate-fade-in border-t-4 border-emerald-500">
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="detalheNome" class="text-2xl font-bold text-white">Extrato</h2>
+                <button onclick="fecharDetalhes()" class="p-2 hover:bg-slate-700 rounded-full text-slate-400">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="extratoContent"></div>
+        </section>
+    </div>
+
+    <!-- MODAL VENDA -->
+    <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2rem] border border-slate-700">
+            <h3 class="text-xl font-bold mb-4">Nova Venda</h3>
+            <input id="vendaNome" placeholder="Produto" class="w-full mb-2 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+            <input id="vendaQtd" type="number" placeholder="Quantidade" class="w-full mb-2 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+            <input id="vendaPreco" type="number" placeholder="Preço" class="w-full mb-4 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+            <div class="flex gap-2">
+                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl">Cancelar</button>
+                <button onclick="confirmarVenda()" class="w-full bg-emerald-600 p-3 rounded-xl">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PAGAMENTO -->
+    <div id="modalPaga" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700">
+            <h3 class="text-xl font-bold mb-4">Pagamento</h3>
+            <input id="pagaValor" type="number" placeholder="Valor" class="w-full mb-4 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+            <div class="flex gap-2">
+                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl">Cancelar</button>
+                <button onclick="confirmarPagamento()" class="w-full bg-emerald-600 p-3 rounded-xl">Confirmar</button>
+            </div>
+        </div>
     </div>
 
 <script>
 let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
+let idAtual = null;
 
 window.onload = () => {
     if(localStorage.getItem('ka_session')) {
@@ -205,6 +242,91 @@ function cadastrarCliente() {
     salvar();
 }
 
+function abrirVenda(id) {
+    idAtual = id;
+    document.getElementById('modalVenda').classList.remove('hidden');
+}
+
+function confirmarVenda() {
+    const nome = document.getElementById('vendaNome').value;
+    const qtd = parseInt(document.getElementById('vendaQtd').value);
+    const preco = parseFloat(document.getElementById('vendaPreco').value);
+
+    if(!nome || !qtd || !preco) return;
+
+    const c = clientes.find(x => x.id === idAtual);
+    const total = qtd * preco;
+
+    c.historico.unshift({
+        id: Date.now(),
+        tipo: 'venda',
+        nome,
+        qtd,
+        preco,
+        total,
+        data: new Date()
+    });
+
+    c.saldo += total;
+    c.totalComprado += total;
+
+    fecharModais();
+    salvar();
+}
+
+function abrirPagamento(id) {
+    idAtual = id;
+    document.getElementById('modalPaga').classList.remove('hidden');
+}
+
+function confirmarPagamento() {
+    const valor = parseFloat(document.getElementById('pagaValor').value);
+    if(!valor) return;
+
+    const c = clientes.find(x => x.id === idAtual);
+
+    c.historico.unshift({
+        id: Date.now(),
+        tipo: 'pagamento',
+        valor,
+        data: new Date()
+    });
+
+    c.saldo -= valor;
+    c.totalPago += valor;
+
+    fecharModais();
+    salvar();
+}
+
+function verDetalhes(id) {
+    const c = clientes.find(x => x.id === id);
+
+    document.getElementById('detalheNome').innerText = c.nome;
+
+    let html = "";
+
+    c.historico.forEach(h => {
+        if(h.tipo === 'venda') {
+            html += `<div>${h.qtd}x ${h.nome} - R$ ${h.total.toFixed(2)} <br><small>${new Date(h.data).toLocaleString()}</small></div><hr>`;
+        } else {
+            html += `<div>Pagamento - R$ ${h.valor.toFixed(2)} <br><small>${new Date(h.data).toLocaleString()}</small></div><hr>`;
+        }
+    });
+
+    document.getElementById('extratoContent').innerHTML = html;
+    document.getElementById('secaoDetalhes').classList.remove('hidden');
+}
+
+function fecharDetalhes() {
+    document.getElementById('secaoDetalhes').classList.add('hidden');
+}
+
+function fecharModais() {
+    document.getElementById('modalVenda').classList.add('hidden');
+    document.getElementById('modalPaga').classList.add('hidden');
+}
+
 function render() {
     const container = document.getElementById('listaClientes');
     const busca = document.getElementById('inputBusca').value.toLowerCase();
@@ -216,17 +338,17 @@ function render() {
     ).forEach(c => {
         container.innerHTML += `
             <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center group animate-fade-in shadow-lg">
-                <div class="flex-1">
+                <div onclick="verDetalhes(${c.id})" class="cursor-pointer flex-1">
                     <h4 class="font-bold text-lg text-white uppercase">${c.nome}</h4>
                     <p class="text-xs text-slate-500 font-bold">Saldo: R$ ${c.saldo.toFixed(2)}</p>
                 </div>
 
                 <div class="flex gap-2">
-                    <button onclick="alert('Função venda não implementada')" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl">
+                    <button onclick="abrirVenda(${c.id})" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl">
                         <i data-lucide="plus-circle" class="w-5 h-5"></i>
                     </button>
 
-                    <button onclick="alert('Função pagamento não implementada')" class="p-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl">
+                    <button onclick="abrirPagamento(${c.id})" class="p-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl">
                         <i data-lucide="dollar-sign" class="w-5 h-5"></i>
                     </button>
 
