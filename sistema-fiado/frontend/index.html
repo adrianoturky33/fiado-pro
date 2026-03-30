@@ -1,603 +1,242 @@
 <!DOCTYPE html>
-
 <html lang="pt-br">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Fiado Pro - Gestão de Crédito</title>
-
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script src="https://unpkg.com/lucide@latest"></script>
 
-
-
     <!-- 🔥 FIREBASE (ADICIONADO) -->
-
     <script type="module">
-
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
         import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-
-
         const firebaseConfig = {
-
-   
-
   apiKey: "AIzaSyBloWH-Tf183YRw945ho8Jcc_EqsfD38tM",
-
   authDomain: "sistema-fiado.firebaseapp.com",
-
   projectId: "sistema-fiado",
-
   storageBucket: "sistema-fiado.firebasestorage.app",
-
   messagingSenderId: "28950483459",
-
   appId: "1:28950483459:web:8382ad04e6b9ebe076f436"
-
 };
 
-
-
         const app = initializeApp(firebaseConfig);
-
         const db = getFirestore(app);
 
-
-
         // deixa global
-
         window.db = db;
-
     </script>
 
-
-
     <style>
-
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
-
         body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; background-color: #0f172a; color: #e2e8f0; }
-
         .font-mono { font-family: 'JetBrains+Mono', monospace; }
-
         .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-
         .input-glow:focus { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); border-color: #10b981; }
-
         .btn-gradient { background: linear-gradient(180deg, #10b981 0%, #059669 100%); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-
         .btn-gradient:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4); }
-
         .card-cliente { transition: all 0.2s ease; }
-
         .card-cliente:hover { transform: scale(1.01); background-color: #1e293b; }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-
         .custom-scroll::-webkit-scrollbar { width: 6px; }
-
         .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
-
         .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-
     </style>
-
 </head>
-
 <body class="custom-scroll min-h-screen">
 
-
-
     <div id="lockScreen" class="fixed inset-0 bg-[#0b1222] z-[100] flex items-center justify-center p-4">
-
         <div class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center relative overflow-hidden">
-
             <div class="relative bg-[#1e293b] p-4 rounded-2xl border border-slate-700 text-emerald-500 inline-block mb-6">
-
                 <i data-lucide="shield-check" class="w-10 h-10"></i>
-
             </div>
-
             <h2 class="text-3xl font-bold text-white mb-8">Acesso Restrito</h2>
-
             <input id="keyInput" type="password" placeholder="Licença de Acesso" class="w-full bg-[#0f172a]/80 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none mb-4 input-glow">
-
             <button onclick="autenticarKey()" class="btn-gradient w-full p-4 rounded-2xl font-bold text-white">Ativar Sistema</button>
-
         </div>
-
     </div>
-
     <div class="max-w-5xl mx-auto p-4 md:p-8">
-
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-
             <div>
-
                 <h1 class="text-4xl font-black flex items-center gap-3 text-white tracking-tight">
-
                     <i data-lucide="wallet" class="text-emerald-500 w-10 h-10"></i> FIADO PRO
-
                 </h1>
-
                 <p class="text-slate-400 mt-1 flex items-center gap-2">
-
                     <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Terminal de Operações
-
                 </p>
-
             </div>
-
             <div class="flex gap-4 w-full md:w-auto">
-
                 <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex-1 min-w-[140px]">
-
                     <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">A Receber</p>
-
                     <h2 id="dashTotal" class="text-2xl font-bold text-emerald-400">R$ 0,00</h2>
-
                 </div>
-
                 <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex-1 min-w-[140px]">
-
                     <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Atrasados</p>
-
                     <h2 id="dashAtrasados" class="text-2xl font-bold text-rose-500">0</h2>
-
                 </div>
-
                 <button onclick="logout()" class="p-4 bg-slate-800 hover:bg-rose-500/20 hover:text-rose-500 text-slate-400 rounded-2xl border border-slate-700 transition-all">
-
                     <i data-lucide="log-out" class="w-6 h-6"></i>
-
                 </button>
-
             </div>
-
         </header>
 
-
-
         <section class="glass-card p-6 rounded-3xl mb-10">
-
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-
                 <input id="inNome" placeholder="Nome Completo *" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-
                 <input id="inApelido" placeholder="Apelido" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-
                 <input id="inTel" type="tel" placeholder="WhatsApp" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-
                 <input id="inVenc" type="number" min="1" max="31" placeholder="Vencimento (Dia)" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-
                 <button onclick="cadastrarCliente()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-2">
-
                     <i data-lucide="save" class="w-4 h-4"></i> Salvar
-
                 </button>
-
             </div>
-
         </section>
 
-
-
         <div class="relative mb-8">
-
             <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"></i>
-
             <input id="inputBusca" oninput="render()" placeholder="Buscar cliente por nome ou apelido..." class="w-full bg-[#1e293b]/50 border border-slate-700 p-5 pl-14 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-lg shadow-2xl">
-
         </div>
-
-
 
         <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
 
-
-
         <section id="secaoDetalhes" class="hidden glass-card p-6 rounded-3xl animate-fade-in border-t-4 border-emerald-500">
-
             <div class="flex justify-between items-center mb-8">
-
                 <h2 id="detalheNome" class="text-2xl font-bold text-white">Extrato</h2>
-
                 <button onclick="fecharDetalhes()" class="p-2 hover:bg-slate-700 rounded-full text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
-
             </div>
-
             <div id="extratoContent"></div>
-
         </section>
-
     </div>
-
-
 
     <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-
         <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2rem] border border-slate-700 shadow-2xl">
-
             <h3 class="text-2xl font-bold mb-6 flex items-center gap-3 text-blue-400"><i data-lucide="shopping-cart"></i> Nova Venda</h3>
-
             <div class="space-y-4">
-
                 <input id="vendaProd" placeholder="Produto/Serviço" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none">
-
                 <div class="flex gap-4">
-
                     <input id="vendaQtd" type="number" value="1" class="w-20 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white">
-
                     <input id="vendaPreco" type="number" step="0.01" inputmode="decimal" placeholder="Preço Unit. R$" class="flex-1 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500">
-
                 </div>
-
                 <button onclick="adicionarAoCarrinho()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold transition-all">+ Adicionar Item</button>
-
                 <div id="carrinhoTemp" class="max-h-40 overflow-y-auto bg-[#0f172a]/50 p-4 rounded-xl space-y-2 text-sm border border-slate-800"></div>
-
                 <div class="flex justify-between items-center pt-4 border-t border-slate-700">
-
                     <span class="text-slate-400">Total:</span>
-
                     <span id="totalVenda" class="text-2xl font-black text-yellow-500">R$ 0,00</span>
-
                 </div>
-
                 <div class="grid grid-cols-2 gap-4">
-
                     <button onclick="fecharModais()" class="bg-slate-700 p-4 rounded-xl">Cancelar</button>
-
                     <button onclick="concluirVenda()" class="bg-emerald-600 p-4 rounded-xl font-bold">Lançar Fiado</button>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
-
 
     <div id="modalPaga" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-
         <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700 shadow-2xl text-center">
-
             <h3 class="text-2xl font-bold mb-2">Receber Valor</h3>
-
             <p class="text-slate-400 mb-6 text-sm">Dívida: <span id="pagaSaldoAtual" class="font-bold text-white"></span></p>
-
             <input id="pagaValor" type="number" step="0.01" inputmode="decimal" placeholder="R$ 0,00" class="w-full bg-[#0f172a] border border-slate-700 p-5 rounded-2xl text-center text-3xl font-black text-emerald-400 outline-none mb-4">
-
             <select id="pagaMetodo" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl mb-6 text-white">
-
                 <option value="PIX">PIX</option>
-
                 <option value="Dinheiro">Dinheiro</option>
-
                 <option value="Cartão">Cartão</option>
-
             </select>
-
             <div class="grid grid-cols-2 gap-4">
-
                 <button onclick="fecharModais()" class="bg-slate-700 p-4 rounded-xl">Voltar</button>
-
                 <button onclick="confirmarPagamento()" class="bg-emerald-600 p-4 rounded-xl font-bold">Confirmar</button>
-
             </div>
-
         </div>
-
     </div>
 
-
-
     <script>
-
 let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
-
-let idAtual = null;
-
+let idAtual = null; 
 let carrinho = [];
 
-
-
-// 🚀 INICIAR
-
 window.onload = () => {
-
     if(localStorage.getItem('ka_session')) {
-
         document.getElementById('lockScreen').remove();
-
     }
 
-
-
     lucide.createIcons();
-
     render();
-
     atualizarDashboard();
 
-
-
+    // 🔥 carregar firebase ao iniciar
     carregarFirebase();
-
 };
 
-
-
-// 🔐 LOGIN
-
 function autenticarKey() {
-
     if(document.getElementById('keyInput').value.length > 2) {
-
         localStorage.setItem('ka_session', '1');
-
         document.getElementById('lockScreen').remove();
-
     }
-
 }
 
-
-
-function logout() {
-
-    if(confirm("Sair do sistema?")) {
-
-        localStorage.removeItem('ka_session');
-
-        location.reload();
-
-    }
-
+function logout() { 
+    if(confirm("Sair do sistema?")) { 
+        localStorage.removeItem('ka_session'); 
+        location.reload(); 
+    } 
 }
 
-
-
-// 💾 SALVAR
-
+// 🔥 SALVAR LOCAL + FIREBASE
 function salvar() {
-
     localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-
     salvarFirebase();
-
-    render();
-
+    render(); 
     atualizarDashboard();
-
 }
 
-
-
-// 🔥 FIREBASE SALVAR
-
+// 🔥 SALVAR NO FIREBASE (SEM DUPLICAR BUGADO)
 async function salvarFirebase() {
-
     if (!window.db) return;
-
-
 
     const { collection, getDocs, deleteDoc, doc, addDoc } =
-
         await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
-
-
     try {
-
+        // limpa coleção antes (evita duplicação)
         const snapshot = await getDocs(collection(window.db, "clientes"));
-
-
-
         for (const d of snapshot.docs) {
-
             await deleteDoc(doc(window.db, "clientes", d.id));
-
         }
 
-
-
+        // salva novamente
         for (let c of clientes) {
-
             await addDoc(collection(window.db, "clientes"), c);
-
         }
-
-
 
     } catch (e) {
-
         console.log("Erro Firebase:", e);
-
     }
-
 }
 
-
-
-// 🔥 FIREBASE CARREGAR
-
+// 🔥 CARREGAR DO FIREBASE
 async function carregarFirebase() {
-
     if (!window.db) return;
 
-
-
     const { collection, getDocs } =
-
         await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
-
-
     try {
-
         const snapshot = await getDocs(collection(window.db, "clientes"));
-
         const dados = snapshot.docs.map(doc => doc.data());
 
-
-
         if (dados.length > 0) {
-
             clientes = dados;
-
             render();
-
             atualizarDashboard();
-
         }
-
     } catch (e) {
-
         console.log("Erro ao carregar Firebase:", e);
-
     }
-
 }
-
-
-
-// ➕ CADASTRAR CLIENTE
-
-function cadastrarCliente() {
-
-    const nome = document.getElementById('inNome').value;
-
-    const venc = document.getElementById('inVenc').value;
-
-
-
-    if(!nome || !venc) return alert("Preencha Nome e Vencimento!");
-
-
-
-    clientes.push({
-
-        id: Date.now(),
-
-        nome,
-
-        apelido: document.getElementById('inApelido').value,
-
-        telefone: document.getElementById('inTel').value,
-
-        vencimento: parseInt(venc),
-
-        saldo: 0,
-
-        totalComprado: 0,
-
-        totalPago: 0,
-
-        historico: []
-
-    });
-
-
-
-    ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
-
-    salvar();
-
-}
-
-
-
-// 🎨 RENDER
-
-function render() {
-
-    const container = document.getElementById('listaClientes');
-
-    const busca = document.getElementById('inputBusca').value.toLowerCase();
-
-    container.innerHTML = "";
-
-
-
-    clientes
-
-    .filter(c => c.nome.toLowerCase().includes(busca) || (c.apelido || "").toLowerCase().includes(busca))
-
-    .forEach(c => {
-
-        container.innerHTML += `
-
-            <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center">
-
-                <div>
-
-                    <h4 class="font-bold text-white">${c.nome}</h4>
-
-                    <p class="text-sm text-slate-400">Saldo: R$ ${c.saldo.toFixed(2)}</p>
-
-                </div>
-
-            </div>
-
-        `;
-
-    });
-
-
-
-    lucide.createIcons();
-
-}
-
-
-
-// 📊 DASHBOARD
-
-function atualizarDashboard() {
-
-    let total = 0, atrasados = 0;
-
-    const hoje = new Date().getDate();
-
-
-
-    clientes.forEach(c => {
-
-        total += c.saldo;
-
-        if(c.saldo > 0 && hoje > c.vencimento) atrasados++;
-
-    });
-
-
-
-    document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2)}`;
-
-    document.getElementById('dashAtrasados').innerText = atrasados;
-
-}
-
-
-
 </script>
 
 
-
-
-
 </body>
-
 </html>
+
