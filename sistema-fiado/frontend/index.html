@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 🔥 FIREBASE (CORRIGIDO) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } 
@@ -103,39 +102,43 @@
 
         <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
 
-        <section id="secaoDetalhes" class="hidden glass-card p-6 rounded-3xl animate-fade-in border-t-4 border-emerald-500">
+        <section id="secaoDetalhes" class="hidden glass-card p-8 rounded-[2.5rem] animate-fade-in border-t-4 border-emerald-500 mb-20">
             <div class="flex justify-between items-center mb-8">
-                <h2 id="detalheNome" class="text-2xl font-bold text-white">Extrato</h2>
-                <button onclick="fecharDetalhes()" class="p-2 hover:bg-slate-700 rounded-full text-slate-400">
-                    <i data-lucide="x" class="w-6 h-6"></i>
+                <div>
+                    <h2 id="detalheNome" class="text-3xl font-black text-white uppercase tracking-tight">Extrato</h2>
+                    <p id="detalheSub" class="text-slate-500 text-sm font-bold"></p>
+                </div>
+                <button onclick="fecharDetalhes()" class="p-3 hover:bg-rose-500/10 hover:text-rose-500 rounded-full text-slate-400 transition-all">
+                    <i data-lucide="x" class="w-8 h-8"></i>
                 </button>
             </div>
+            
             <div id="extratoContent"></div>
         </section>
     </div>
 
-    <!-- MODAL VENDA -->
     <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
         <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2rem] border border-slate-700">
             <h3 class="text-xl font-bold mb-4">Nova Venda</h3>
-            <input id="vendaNome" placeholder="Produto" class="w-full mb-2 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
-            <input id="vendaQtd" type="number" placeholder="Quantidade" class="w-full mb-2 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
-            <input id="vendaPreco" type="number" placeholder="Preço" class="w-full mb-4 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+            <input id="vendaNome" placeholder="Produto" class="w-full mb-2 p-3 bg-[#0f172a] border border-slate-700 rounded-xl outline-none focus:border-blue-500">
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <input id="vendaQtd" type="number" placeholder="Quantidade" class="w-full p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+                <input id="vendaPreco" type="number" placeholder="Preço Unit." class="w-full p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+            </div>
             <div class="flex gap-2">
-                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl">Cancelar</button>
-                <button onclick="confirmarVenda()" class="w-full bg-emerald-600 p-3 rounded-xl">Confirmar</button>
+                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl font-bold">Cancelar</button>
+                <button onclick="confirmarVenda()" class="w-full bg-blue-600 p-3 rounded-xl font-bold">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL PAGAMENTO -->
     <div id="modalPaga" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700">
-            <h3 class="text-xl font-bold mb-4">Pagamento</h3>
-            <input id="pagaValor" type="number" placeholder="Valor" class="w-full mb-4 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+        <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700 text-center">
+            <h3 class="text-xl font-bold mb-4">Registrar Pagamento</h3>
+            <input id="pagaValor" type="number" placeholder="0,00" class="w-full mb-6 p-4 bg-[#0f172a] border border-slate-700 rounded-2xl text-center text-3xl font-black text-emerald-400 outline-none focus:border-emerald-500">
             <div class="flex gap-2">
-                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl">Cancelar</button>
-                <button onclick="confirmarPagamento()" class="w-full bg-emerald-600 p-3 rounded-xl">Confirmar</button>
+                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl font-bold">Cancelar</button>
+                <button onclick="confirmarPagamento()" class="w-full bg-emerald-600 p-3 rounded-xl font-bold">Confirmar</button>
             </div>
         </div>
     </div>
@@ -181,7 +184,7 @@ async function salvarFirebase() {
         const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
         for (const d of snapshot.docs) { await window.fb.deleteDoc(window.fb.doc(window.db, "clientes", d.id)); }
         for (let c of clientes) { await window.fb.addDoc(window.fb.collection(window.db, "clientes"), c); }
-    } catch (e) { console.log("Erro Firebase:", e); }
+    } catch (e) { console.error("Erro Firebase Save:", e); }
 }
 
 async function carregarFirebase() {
@@ -195,7 +198,7 @@ async function carregarFirebase() {
             render();
             atualizarDashboard();
         }
-    } catch (e) { console.log("Erro Load:", e); }
+    } catch (e) { console.error("Erro Firebase Load:", e); }
 }
 
 function cadastrarCliente() {
@@ -203,38 +206,43 @@ function cadastrarCliente() {
     const venc = document.getElementById('inVenc').value;
     if(!nome || !venc) return alert("Preencha Nome e Vencimento!");
     clientes.push({ 
-        id: Date.now(), nome, apelido: document.getElementById('inApelido').value,
-        telefone: document.getElementById('inTel').value, vencimento: parseInt(venc),
-        saldo: 0, totalComprado: 0, totalPago: 0, historico: [] 
+        id: Date.now(), 
+        nome, 
+        apelido: document.getElementById('inApelido').value,
+        telefone: document.getElementById('inTel').value, 
+        vencimento: parseInt(venc),
+        saldo: 0, 
+        historico: [] 
     });
     ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
     salvar();
 }
 
 function abrirVenda(id) { idAtual = id; document.getElementById('modalVenda').classList.remove('hidden'); }
+function abrirPagamento(id) { idAtual = id; document.getElementById('modalPaga').classList.remove('hidden'); }
+function fecharModais() { document.getElementById('modalVenda').classList.add('hidden'); document.getElementById('modalPaga').classList.add('hidden'); }
 
 function confirmarVenda() {
-    const nomeProd = document.getElementById('vendaNome').value;
-    const qtd = parseInt(document.getElementById('vendaQtd').value);
-    const preco = parseFloat(document.getElementById('vendaPreco').value);
-    if(!nomeProd || !qtd || !preco) return;
+    const prod = document.getElementById('vendaNome').value;
+    const qtd = parseInt(document.getElementById('vendaQtd').value) || 1;
+    const preco = parseFloat(document.getElementById('vendaPreco').value) || 0;
+    if(!prod || preco <= 0) return;
+    
     const c = clientes.find(x => x.id === idAtual);
     const total = qtd * preco;
-    c.historico.unshift({ id: Date.now(), tipo: 'venda', prod: nomeProd, qtd, preco, valor: total, data: new Date() });
-    c.saldo += total;
+    c.historico.unshift({ id: Date.now(), tipo: 'venda', prod, qtd, valor: total, data: new Date().toISOString() });
+    c.saldo = (c.saldo || 0) + total;
     fecharModais();
     salvar();
     ['vendaNome', 'vendaQtd', 'vendaPreco'].forEach(i => document.getElementById(i).value = "");
 }
 
-function abrirPagamento(id) { idAtual = id; document.getElementById('modalPaga').classList.remove('hidden'); }
-
 function confirmarPagamento() {
-    const valor = parseFloat(document.getElementById('pagaValor').value);
-    if(!valor) return;
+    const valor = parseFloat(document.getElementById('pagaValor').value) || 0;
+    if(valor <= 0) return;
     const c = clientes.find(x => x.id === idAtual);
-    c.historico.unshift({ id: Date.now(), tipo: 'pagamento', valor, data: new Date() });
-    c.saldo -= valor;
+    c.historico.unshift({ id: Date.now(), tipo: 'pagamento', valor, data: new Date().toISOString() });
+    c.saldo = (c.saldo || 0) - valor;
     fecharModais();
     salvar();
     document.getElementById('pagaValor').value = "";
@@ -243,25 +251,26 @@ function confirmarPagamento() {
 function verDetalhes(id) {
     const c = clientes.find(x => x.id === id);
     if(!c) return;
+    idAtual = id;
     document.getElementById('detalheNome').innerText = c.nome;
+    document.getElementById('detalheSub').innerText = c.telefone ? `WhatsApp: ${c.telefone}` : "Sem telefone cadastrado";
     
-    // Cálculo de Resumo para o Extrato
     const totalComprado = (c.historico || []).filter(h => h.tipo === 'venda').reduce((acc, h) => acc + (h.valor || 0), 0);
     const totalPago = (c.historico || []).filter(h => h.tipo === 'pagamento').reduce((acc, h) => acc + (h.valor || 0), 0);
 
     let html = `
-        <div class="grid grid-cols-3 gap-3 mb-8">
-            <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 text-center">
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Comprado</p>
-                <h3 class="text-white font-bold">R$ ${totalComprado.toFixed(2)}</h3>
+        <div class="grid grid-cols-3 gap-4 mb-8">
+            <div class="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-black mb-1">Comprado</p>
+                <h3 class="text-xl font-bold text-white">R$ ${totalComprado.toFixed(2)}</h3>
             </div>
-            <div class="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 text-center">
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Pago</p>
-                <h3 class="text-emerald-400 font-bold">R$ ${totalPago.toFixed(2)}</h3>
+            <div class="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-black mb-1">Pago</p>
+                <h3 class="text-xl font-bold text-emerald-400">R$ ${totalPago.toFixed(2)}</h3>
             </div>
-            <div class="bg-slate-800/80 p-4 rounded-2xl border border-rose-500/20 text-center">
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Saldo</p>
-                <h3 class="text-rose-500 font-bold">R$ ${(totalComprado - totalPago).toFixed(2)}</h3>
+            <div class="bg-slate-800/80 p-5 rounded-3xl border border-rose-500/20 text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-black mb-1">Saldo</p>
+                <h3 class="text-xl font-bold text-rose-500">R$ ${(totalComprado - totalPago).toFixed(2)}</h3>
             </div>
         </div>
         <div class="space-y-3">
@@ -269,20 +278,21 @@ function verDetalhes(id) {
 
     (c.historico || []).forEach(h => {
         const isVenda = h.tipo === 'venda';
-        const dataStr = h.data?.seconds ? new Date(h.data.seconds * 1000).toLocaleDateString() : new Date(h.data).toLocaleDateString();
+        const dataRaw = h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data);
+        const dataStr = isNaN(dataRaw) ? "---" : dataRaw.toLocaleDateString('pt-BR');
         
         html += `
-            <div class="flex justify-between items-center bg-slate-900/40 p-4 rounded-xl border border-slate-800">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg ${isVenda ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">
-                        <i data-lucide="${isVenda ? 'shopping-bag' : 'check-circle'}" class="w-4 h-4"></i>
+            <div class="flex justify-between items-center bg-slate-900/40 p-5 rounded-2xl border border-slate-800/50 hover:border-emerald-500/30 transition-all">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 rounded-xl ${isVenda ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">
+                        <i data-lucide="${isVenda ? 'shopping-bag' : 'check-circle'}" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <p class="text-[10px] text-slate-500">${dataStr}</p>
-                        <p class="font-bold text-sm uppercase">${isVenda ? `${h.qtd}x ${h.prod}` : 'Pagamento'}</p>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">${dataStr}</p>
+                        <p class="font-bold text-sm uppercase">${isVenda ? `<span class="text-blue-400 font-mono">${h.qtd}x</span> ${h.prod}` : 'Pagamento Efetuado'}</p>
                     </div>
                 </div>
-                <span class="font-bold ${isVenda ? 'text-white' : 'text-emerald-400'}">
+                <span class="font-black text-lg ${isVenda ? 'text-white' : 'text-emerald-400'}">
                     ${isVenda ? '' : '- '}R$ ${(h.valor || 0).toFixed(2)}
                 </span>
             </div>
@@ -297,22 +307,20 @@ function verDetalhes(id) {
 
 function fecharDetalhes() { document.getElementById('secaoDetalhes').classList.add('hidden'); }
 
-function fecharModais() {
-    document.getElementById('modalVenda').classList.add('hidden');
-    document.getElementById('modalPaga').classList.add('hidden');
-}
-
 function render() {
     const container = document.getElementById('listaClientes');
     const busca = document.getElementById('inputBusca').value.toLowerCase();
     container.innerHTML = "";
     clientes.filter(c => c.nome.toLowerCase().includes(busca) || (c.apelido && c.apelido.toLowerCase().includes(busca)))
     .forEach(c => {
+        const saldo = c.saldo || 0;
         container.innerHTML += `
             <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center animate-fade-in shadow-lg">
                 <div onclick="verDetalhes(${c.id})" class="cursor-pointer flex-1">
-                    <h4 class="font-bold text-lg text-white uppercase">${c.nome}</h4>
-                    <p class="text-xs text-slate-400 font-bold">Saldo: <span class="${c.saldo > 0 ? 'text-rose-400' : 'text-emerald-400'}">R$ ${c.saldo.toFixed(2)}</span></p>
+                    <h4 class="font-bold text-lg text-white uppercase leading-tight">${c.nome}</h4>
+                    <p class="text-xs text-slate-500 font-bold uppercase mt-1">
+                        Dia ${c.vencimento} • <span class="${saldo > 0 ? 'text-rose-400' : 'text-emerald-400'}">R$ ${saldo.toFixed(2)}</span>
+                    </p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="abrirVenda(${c.id})" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl transition-all"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
@@ -334,8 +342,9 @@ function atualizarDashboard() {
     let total = 0, atrasados = 0;
     const hoje = new Date().getDate();
     clientes.forEach(c => {
-        total += (c.saldo || 0);
-        if(c.saldo > 0 && hoje > c.vencimento) atrasados++;
+        const s = c.saldo || 0;
+        total += s;
+        if(s > 0 && hoje > c.vencimento) atrasados++;
     });
     document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2)}`;
     document.getElementById('dashAtrasados').innerText = atrasados;
