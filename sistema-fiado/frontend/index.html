@@ -115,7 +115,10 @@ window.onload = () => {
     lucide.createIcons();
     render();
     atualizarDashboard();
-    carregarFirebase();
+
+    setTimeout(() => {
+        carregarFirebase();
+    }, 500);
 };
 
 function autenticarKey() {
@@ -134,23 +137,27 @@ function logout() {
 
 function salvar() {
     localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-    salvarFirebase();
+
+    setTimeout(() => {
+        salvarFirebase();
+    }, 100);
+
     render(); 
     atualizarDashboard();
 }
 
 async function salvarFirebase() {
-    if (!window.db) return;
+    if (!window.db || !window.fb) return;
 
     try {
-        const snapshot = await fb.getDocs(fb.collection(db, "clientes"));
+        const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
 
         for (const d of snapshot.docs) {
-            await fb.deleteDoc(fb.doc(db, "clientes", d.id));
+            await window.fb.deleteDoc(window.fb.doc(window.db, "clientes", d.id));
         }
 
         for (let c of clientes) {
-            await fb.addDoc(fb.collection(db, "clientes"), c);
+            await window.fb.addDoc(window.fb.collection(window.db, "clientes"), c);
         }
 
     } catch (e) {
@@ -159,14 +166,15 @@ async function salvarFirebase() {
 }
 
 async function carregarFirebase() {
-    if (!window.db) return;
+    if (!window.db || !window.fb) return;
 
     try {
-        const snapshot = await fb.getDocs(fb.collection(db, "clientes"));
+        const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
         const dados = snapshot.docs.map(doc => doc.data());
 
         if (dados.length > 0) {
             clientes = dados;
+            localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
             render();
             atualizarDashboard();
         }
@@ -207,16 +215,36 @@ function render() {
         (c.apelido && c.apelido.toLowerCase().includes(busca))
     ).forEach(c => {
         container.innerHTML += `
-            <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center">
-                <div>
-                    <h4 class="font-bold text-white">${c.nome}</h4>
-                    <p class="text-sm text-slate-400">Saldo: R$ ${c.saldo.toFixed(2)}</p>
+            <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center group animate-fade-in shadow-lg">
+                <div class="flex-1">
+                    <h4 class="font-bold text-lg text-white uppercase">${c.nome}</h4>
+                    <p class="text-xs text-slate-500 font-bold">Saldo: R$ ${c.saldo.toFixed(2)}</p>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="alert('Função venda não implementada')" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl">
+                        <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    </button>
+
+                    <button onclick="alert('Função pagamento não implementada')" class="p-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl">
+                        <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+                    </button>
+
+                    <button onclick="excluirCliente(${c.id})" class="p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
                 </div>
             </div>
         `;
     });
 
     lucide.createIcons();
+}
+
+function excluirCliente(id) {
+    if(!confirm("Apagar cliente?")) return;
+    clientes = clientes.filter(c => c.id !== id);
+    salvar();
 }
 
 function atualizarDashboard() {
