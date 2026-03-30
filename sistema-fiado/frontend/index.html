@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fiado Pro - Gestão de Crédito</title>
+    <title>Fiado Pro - Estável</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -23,16 +23,13 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Funções de Banco de Dados exportadas para o escopo Global (window)
-        window.salvarFirebase = async (listaClientes) => {
+        window.salvarFirebase = async (dados) => {
             try {
                 const colRef = collection(db, "clientes");
                 const snapshot = await getDocs(colRef);
-                // Limpa o banco atual antes de subir a nova lista (Sincronização Total)
                 for (const d of snapshot.docs) { await deleteDoc(doc(db, "clientes", d.id)); }
-                for (let c of listaClientes) { await addDoc(colRef, c); }
-                console.log("Sincronizado com Firebase");
-            } catch (e) { console.error("Erro Firebase Save:", e); }
+                for (let c of dados) { await addDoc(colRef, c); }
+            } catch (e) { console.error("Erro Cloud:", e); }
         };
 
         window.carregarFirebase = async () => {
@@ -40,125 +37,72 @@
                 const snapshot = await getDocs(collection(db, "clientes"));
                 const dados = snapshot.docs.map(d => d.data());
                 if (dados.length > 0) {
-                    window.clientes = dados;
+                    window.clientes = dados.map(c => ({
+                        ...c,
+                        saldo: c.saldo || 0,
+                        historico: c.historico || []
+                    }));
                     window.render();
                     window.atualizarDashboard();
                 }
-            } catch (e) { console.error("Erro Firebase Load:", e); }
+            } catch (e) { console.error("Erro Load:", e); }
         };
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .btn-gradient { background: linear-gradient(180deg, #10b981 0%, #059669 100%); transition: all 0.2s; }
-        .card-cliente { transition: all 0.2s; cursor: pointer; }
-        .card-cliente:hover { background-color: #1e293b; transform: translateY(-2px); }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b1222; color: #e2e8f0; }
+        .glass-card { background: #111a2c; border: 1px solid #1e293b; border-radius: 1.5rem; }
+        .input-dark { background: #0f172a; border: 1px solid #1e293b; padding: 0.75rem; border-radius: 0.75rem; color: white; outline: none; }
+        .btn-primary { background: #10b981; color: white; font-weight: 800; padding: 0.75rem; border-radius: 0.75rem; }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="p-4 md:p-8">
 
-    <div id="lockScreen" class="fixed inset-0 bg-[#0b1222] z-[100] flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center shadow-2xl">
-            <h2 class="text-3xl font-bold text-white mb-8">Acesso Restrito</h2>
-            <input id="keyInput" type="password" placeholder="Licença de Acesso" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-2xl text-center text-white mb-4 outline-none focus:border-emerald-500">
-            <button onclick="autenticarKey()" class="btn-gradient w-full p-4 rounded-2xl font-bold text-white shadow-lg">Ativar Sistema</button>
+    <header class="max-w-6xl mx-auto flex justify-between items-center mb-10">
+        <h1 class="text-2xl font-black text-emerald-500">FIADO PRO</h1>
+        <div class="flex gap-4">
+            <div class="glass-card px-4 py-2">
+                <p class="text-[10px] text-slate-500 uppercase font-bold">Total</p>
+                <h2 id="dashTotal" class="text-lg font-bold">R$ 0,00</h2>
+            </div>
         </div>
-    </div>
+    </header>
 
-    <div class="max-w-5xl mx-auto p-4 md:p-8">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-            <div>
-                <h1 class="text-4xl font-black text-white flex items-center gap-3">
-                    <i data-lucide="wallet" class="text-emerald-500"></i> FIADO PRO
-                </h1>
-                <p class="text-slate-400 mt-1">Terminal de Operações</p>
+    <main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <aside class="lg:col-span-1">
+            <div class="glass-card p-6 space-y-4">
+                <h3 class="font-bold mb-2">Novo Cliente</h3>
+                <input id="inNome" placeholder="Nome" class="input-dark w-full">
+                <input id="inVenc" type="number" placeholder="Dia Vencimento" class="input-dark w-full">
+                <button onclick="cadastrarCliente()" class="btn-primary w-full">SALVAR</button>
             </div>
-            <div class="flex gap-4">
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 min-w-[120px]">
-                    <p class="text-[10px] text-slate-500 uppercase font-black">A Receber</p>
-                    <h2 id="dashTotal" class="text-2xl font-bold text-emerald-400">R$ 0,00</h2>
-                </div>
-                <button onclick="logout()" class="p-4 bg-slate-800 hover:bg-rose-900/20 rounded-2xl border border-slate-700 transition-colors">
-                    <i data-lucide="log-out" class="text-rose-500"></i>
-                </button>
-            </div>
-        </header>
+        </aside>
 
-        <section class="glass-card p-6 rounded-3xl mb-10 grid grid-cols-1 md:grid-cols-5 gap-4">
-            <input id="inNome" placeholder="Nome *" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none focus:border-emerald-500">
-            <input id="inApelido" placeholder="Apelido" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
-            <input id="inTel" type="tel" placeholder="WhatsApp" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
-            <input id="inVenc" type="number" placeholder="Venc. (Dia)" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
-            <button onclick="cadastrarCliente()" class="bg-emerald-600 hover:bg-emerald-500 p-3 rounded-xl font-bold text-white transition-colors">Salvar</button>
+        <section class="lg:col-span-3">
+            <input id="inputBusca" oninput="render()" placeholder="Buscar..." class="input-dark w-full mb-6 py-4 px-6 text-lg">
+            <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
+    </main>
 
-        <div class="relative mb-8">
-            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"></i>
-            <input id="inputBusca" oninput="render()" placeholder="Buscar cliente por nome ou apelido..." class="w-full bg-[#1e293b]/50 border border-slate-700 p-5 pl-12 rounded-2xl outline-none text-lg focus:border-emerald-500 transition-all">
-        </div>
-
-        <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
-
-        <section id="secaoDetalhes" class="hidden glass-card p-6 rounded-3xl animate-fade-in border-t-4 border-emerald-500 mb-20">
-            <div class="flex justify-between items-center mb-8">
-                <h2 id="detalheNome" class="text-2xl font-bold text-white uppercase tracking-tight">Extrato</h2>
-                <button onclick="fecharDetalhes()" class="p-2 hover:bg-slate-700 rounded-full transition-colors"><i data-lucide="x"></i></button>
+    <div id="secaoDetalhes" class="hidden fixed inset-0 bg-[#0b1222]/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="detalheNome" class="text-2xl font-bold"></h2>
+                <button onclick="fecharDetalhes()" class="text-slate-500"><i data-lucide="x"></i></button>
             </div>
             <div id="extratoContent" class="space-y-3"></div>
-        </section>
-    </div>
-
-    <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2.5rem] border border-slate-700 shadow-2xl">
-            <h3 class="text-2xl font-bold mb-6 text-emerald-400 flex items-center gap-2">
-                <i data-lucide="shopping-cart"></i> Lançar Fiado
-            </h3>
-            <input id="vendaProd" placeholder="Produto/Descrição" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white mb-4 outline-none focus:border-emerald-500">
-            <div class="flex gap-4 mb-6">
-                <input id="vendaQtd" type="number" value="1" class="w-24 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none">
-                <input id="vendaPreco" type="number" step="0.01" placeholder="Preço R$" class="flex-1 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-emerald-500">
-            </div>
-            <button onclick="concluirVenda()" class="w-full btn-gradient p-4 rounded-xl font-bold text-lg text-white mb-3">Confirmar Venda</button>
-            <button onclick="fecharModais()" class="w-full text-slate-500 font-medium hover:text-slate-300 transition-colors">Cancelar</button>
         </div>
     </div>
 
     <script>
-        // Inicialização de Dados
         window.clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
-        let idAtual = null;
 
         window.onload = () => {
-            if(localStorage.getItem('ka_session')) document.getElementById('lockScreen').remove();
             lucide.createIcons();
             window.render();
             window.atualizarDashboard();
             if(window.carregarFirebase) window.carregarFirebase();
-        };
-
-        window.autenticarKey = () => {
-            const input = document.getElementById('keyInput').value;
-            if(input.length >= 3) {
-                localStorage.setItem('ka_session', 'true');
-                document.getElementById('lockScreen').remove();
-            } else {
-                alert("Chave Inválida");
-            }
-        };
-
-        window.logout = () => { 
-            if(confirm("Deseja sair do sistema?")) {
-                localStorage.removeItem('ka_session'); 
-                location.reload(); 
-            }
         };
 
         window.render = () => {
@@ -166,21 +110,16 @@
             const busca = document.getElementById('inputBusca').value.toLowerCase();
             container.innerHTML = "";
             
-            window.clientes
-            .filter(c => c.nome.toLowerCase().includes(busca) || (c.apelido && c.apelido.toLowerCase().includes(busca)))
+            window.clientes.filter(c => c.nome.toLowerCase().includes(busca))
             .forEach(c => {
+                const saldo = typeof c.saldo === 'number' ? c.saldo : 0;
                 container.innerHTML += `
-                    <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center shadow-lg animate-fade-in group">
-                        <div onclick="window.verDetalhes(${c.id})" class="flex-1">
-                            <h4 class="font-bold text-white uppercase">${c.nome} ${c.apelido ? `<span class="text-emerald-500/50 text-xs">(${c.apelido})</span>` : ''}</h4>
-                            <p class="text-xs ${c.saldo > 0 ? 'text-rose-400' : 'text-slate-500'} font-semibold">
-                                Saldo: R$ ${c.saldo.toFixed(2)}
-                            </p>
+                    <div class="glass-card p-4 flex justify-between items-center">
+                        <div onclick="verDetalhes(${c.id})" class="cursor-pointer">
+                            <h4 class="font-bold uppercase">${c.nome}</h4>
+                            <p class="text-xs text-slate-500">Saldo: R$ ${saldo.toFixed(2)}</p>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="window.abrirVenda(${c.id})" class="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500 hover:text-white transition-all"><i data-lucide="plus"></i></button>
-                            <button onclick="window.excluirCliente(${c.id})" class="p-3 bg-rose-500/10 text-rose-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"><i data-lucide="trash-2"></i></button>
-                        </div>
+                        <button onclick="excluirCliente(${c.id})" class="text-rose-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>`;
             });
             lucide.createIcons();
@@ -189,75 +128,47 @@
         window.cadastrarCliente = () => {
             const nome = document.getElementById('inNome').value;
             const venc = document.getElementById('inVenc').value;
-            if(!nome || !venc) return alert("Nome e Vencimento são obrigatórios!");
+            if(!nome) return alert("Digite o nome");
             
             window.clientes.push({
                 id: Date.now(),
                 nome: nome,
-                apelido: document.getElementById('inApelido').value,
-                vencimento: parseInt(venc),
+                vencimento: parseInt(venc) || 1,
                 saldo: 0,
                 historico: []
             });
-            salvarTudo();
-            ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
-        };
-
-        window.abrirVenda = (id) => { idAtual = id; document.getElementById('modalVenda').classList.remove('hidden'); };
-        
-        window.concluirVenda = () => {
-            const c = window.clientes.find(x => x.id === idAtual);
-            const p = document.getElementById('vendaProd').value;
-            const v = parseFloat(document.getElementById('vendaPreco').value);
-            const q = parseInt(document.getElementById('vendaQtd').value) || 1;
-
-            if(!p || isNaN(v)) return alert("Preencha o produto e o valor corretamente!");
-
-            const totalVenda = v * q;
-            c.historico.unshift({ 
-                data: new Date().toISOString(), // Salva como String ISO para evitar erros de data
-                tipo: 'venda', 
-                prod: `${q}x ${p}`, 
-                valor: totalVenda 
-            });
-            c.saldo += totalVenda;
-            
-            fecharModais();
-            salvarTudo();
+            salvar();
+            document.getElementById('inNome').value = "";
+            document.getElementById('inVenc').value = "";
         };
 
         window.verDetalhes = (id) => {
             const c = window.clientes.find(x => x.id === id);
-            document.getElementById('detalheNome').innerText = `Histórico: ${c.nome}`;
+            if(!c) return;
+            document.getElementById('detalheNome').innerText = c.nome;
             
-            const content = c.historico.map(h => {
-                // Tratamento de data (Firebase vs Local)
-                const dataObj = h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data);
-                const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+            let html = "";
+            (c.historico || []).forEach(h => {
+                const dataRaw = h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data);
+                const dataValida = isNaN(dataRaw) ? "Data n/d" : dataRaw.toLocaleDateString('pt-BR');
+                const valor = typeof h.valor === 'number' ? h.valor : 0;
 
-                return `
-                    <div class="bg-slate-900/50 p-4 rounded-2xl flex justify-between items-center border border-slate-800">
-                        <div>
-                            <p class="text-[10px] text-slate-500 font-bold">${dataFormatada}</p>
-                            <p class="font-bold text-white text-sm uppercase">${h.prod}</p>
-                        </div>
-                        <span class="font-black text-emerald-400">R$ ${h.valor.toFixed(2)}</span>
-                    </div>`;
-            }).join('');
+                html += `
+                <div class="bg-slate-900/50 p-4 rounded-xl flex justify-between items-center border border-slate-800">
+                    <div>
+                        <p class="text-[10px] text-slate-500">${dataValida}</p>
+                        <p class="font-bold text-sm uppercase">${h.prod || 'Venda'}</p>
+                    </div>
+                    <span class="font-bold text-emerald-400">R$ ${valor.toFixed(2)}</span>
+                </div>`;
+            });
 
-            document.getElementById('extratoContent').innerHTML = content || '<p class="text-slate-500 text-center py-10 uppercase text-xs font-bold tracking-widest">Sem movimentações recentes</p>';
+            document.getElementById('extratoContent').innerHTML = html || "<p class='text-center text-slate-600'>Sem histórico</p>";
             document.getElementById('secaoDetalhes').classList.remove('hidden');
-            window.scrollTo({ top: document.getElementById('secaoDetalhes').offsetTop - 20, behavior: 'smooth' });
+            lucide.createIcons();
         };
 
-        window.excluirCliente = (id) => {
-            if(confirm("Deseja apagar este cliente e todo o seu histórico?")) {
-                window.clientes = window.clientes.filter(c => c.id !== id);
-                salvarTudo();
-            }
-        };
-
-        function salvarTudo() {
+        function salvar() {
             localStorage.setItem('fiado_db_v2', JSON.stringify(window.clientes));
             window.render();
             window.atualizarDashboard();
@@ -265,17 +176,18 @@
         }
 
         window.atualizarDashboard = () => {
-            const total = window.clientes.reduce((acc, c) => acc + c.saldo, 0);
+            const total = window.clientes.reduce((acc, c) => acc + (c.saldo || 0), 0);
             document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2)}`;
         };
 
-        window.fecharModais = () => {
-            document.getElementById('modalVenda').classList.add('hidden');
-            ['vendaProd', 'vendaPreco'].forEach(id => document.getElementById(id).value = "");
-            document.getElementById('vendaQtd').value = 1;
-        };
-        
         window.fecharDetalhes = () => document.getElementById('secaoDetalhes').classList.add('hidden');
+        
+        window.excluirCliente = (id) => {
+            if(confirm("Excluir cliente?")) {
+                window.clientes = window.clientes.filter(c => c.id !== id);
+                salvar();
+            }
+        };
     </script>
 </body>
 </html>
