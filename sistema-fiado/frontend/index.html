@@ -112,33 +112,40 @@
                     <i data-lucide="x" class="w-8 h-8"></i>
                 </button>
             </div>
-            
             <div id="extratoContent"></div>
         </section>
+    </div>
+
+    <div id="modalPaga" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700 text-center">
+            <h3 class="text-xl font-bold mb-4 text-white">Registrar Pagamento</h3>
+            
+            <input id="pagaValor" type="number" placeholder="0,00" class="w-full mb-4 p-4 bg-[#0f172a] border border-slate-700 rounded-2xl text-center text-3xl font-black text-emerald-400 outline-none focus:border-emerald-500">
+            
+            <select id="pagaMetodo" class="w-full mb-6 p-4 bg-[#0f172a] border border-slate-700 rounded-2xl text-white outline-none focus:border-emerald-500">
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix</option>
+                <option value="Cartão">Cartão</option>
+            </select>
+
+            <div class="flex gap-2">
+                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl font-bold">Cancelar</button>
+                <button onclick="confirmarPagamento()" class="w-full bg-emerald-600 p-3 rounded-xl font-bold">Confirmar</button>
+            </div>
+        </div>
     </div>
 
     <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
         <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2rem] border border-slate-700">
             <h3 class="text-xl font-bold mb-4">Nova Venda</h3>
-            <input id="vendaNome" placeholder="Produto" class="w-full mb-2 p-3 bg-[#0f172a] border border-slate-700 rounded-xl outline-none focus:border-blue-500">
+            <input id="vendaNome" placeholder="Produto" class="w-full mb-2 p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
             <div class="grid grid-cols-2 gap-2 mb-4">
-                <input id="vendaQtd" type="number" placeholder="Quantidade" class="w-full p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
-                <input id="vendaPreco" type="number" placeholder="Preço Unit." class="w-full p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+                <input id="vendaQtd" type="number" placeholder="Qtd" class="w-full p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
+                <input id="vendaPreco" type="number" placeholder="Preço" class="w-full p-3 bg-[#0f172a] border border-slate-700 rounded-xl">
             </div>
             <div class="flex gap-2">
-                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl font-bold">Cancelar</button>
-                <button onclick="confirmarVenda()" class="w-full bg-blue-600 p-3 rounded-xl font-bold">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modalPaga" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700 text-center">
-            <h3 class="text-xl font-bold mb-4">Registrar Pagamento</h3>
-            <input id="pagaValor" type="number" placeholder="0,00" class="w-full mb-6 p-4 bg-[#0f172a] border border-slate-700 rounded-2xl text-center text-3xl font-black text-emerald-400 outline-none focus:border-emerald-500">
-            <div class="flex gap-2">
-                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl font-bold">Cancelar</button>
-                <button onclick="confirmarPagamento()" class="w-full bg-emerald-600 p-3 rounded-xl font-bold">Confirmar</button>
+                <button onclick="fecharModais()" class="w-full bg-slate-700 p-3 rounded-xl">Cancelar</button>
+                <button onclick="confirmarVenda()" class="w-full bg-blue-600 p-3 rounded-xl">Confirmar</button>
             </div>
         </div>
     </div>
@@ -148,35 +155,17 @@ let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
 let idAtual = null;
 
 window.onload = () => {
-    if(localStorage.getItem('ka_session')) {
-        document.getElementById('lockScreen').remove();
-    }
+    if(localStorage.getItem('ka_session')) { document.getElementById('lockScreen').remove(); }
     lucide.createIcons();
     render();
     atualizarDashboard();
     setTimeout(() => { carregarFirebase(); }, 500);
 };
 
-function autenticarKey() {
-    if(document.getElementById('keyInput').value.length > 2) {
-        localStorage.setItem('ka_session', '1');
-        document.getElementById('lockScreen').remove();
-    }
-}
-
-function logout() { 
-    if(confirm("Sair do sistema?")) { 
-        localStorage.removeItem('ka_session'); 
-        location.reload(); 
-    } 
-}
-
-function salvar() {
-    localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-    setTimeout(() => { salvarFirebase(); }, 100);
-    render(); 
-    atualizarDashboard();
-}
+// Funções de Autenticação e Sincronização
+function autenticarKey() { if(document.getElementById('keyInput').value.length > 2) { localStorage.setItem('ka_session', '1'); document.getElementById('lockScreen').remove(); } }
+function logout() { if(confirm("Sair do sistema?")) { localStorage.removeItem('ka_session'); location.reload(); } }
+function salvar() { localStorage.setItem('fiado_db_v2', JSON.stringify(clientes)); render(); atualizarDashboard(); salvarFirebase(); }
 
 async function salvarFirebase() {
     if (!window.db || !window.fb) return;
@@ -184,7 +173,7 @@ async function salvarFirebase() {
         const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
         for (const d of snapshot.docs) { await window.fb.deleteDoc(window.fb.doc(window.db, "clientes", d.id)); }
         for (let c of clientes) { await window.fb.addDoc(window.fb.collection(window.db, "clientes"), c); }
-    } catch (e) { console.error("Erro Firebase Save:", e); }
+    } catch (e) { console.error(e); }
 }
 
 async function carregarFirebase() {
@@ -192,85 +181,75 @@ async function carregarFirebase() {
     try {
         const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
         const dados = snapshot.docs.map(doc => doc.data());
-        if (dados.length > 0) {
-            clientes = dados.map(c => ({...c, historico: c.historico || [], saldo: c.saldo || 0}));
-            localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-            render();
-            atualizarDashboard();
-        }
-    } catch (e) { console.error("Erro Firebase Load:", e); }
+        if (dados.length > 0) { clientes = dados; render(); atualizarDashboard(); }
+    } catch (e) { console.error(e); }
 }
 
+// Operações de Cliente
 function cadastrarCliente() {
     const nome = document.getElementById('inNome').value;
     const venc = document.getElementById('inVenc').value;
-    if(!nome || !venc) return alert("Preencha Nome e Vencimento!");
+    if(!nome || !venc) return alert("Nome e Vencimento são obrigatórios!");
     clientes.push({ 
-        id: Date.now(), 
-        nome, 
-        apelido: document.getElementById('inApelido').value,
-        telefone: document.getElementById('inTel').value, 
-        vencimento: parseInt(venc),
-        saldo: 0, 
-        historico: [] 
+        id: Date.now(), nome, apelido: document.getElementById('inApelido').value,
+        telefone: document.getElementById('inTel').value, vencimento: parseInt(venc),
+        saldo: 0, historico: [] 
     });
     ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
     salvar();
 }
 
-function abrirVenda(id) { idAtual = id; document.getElementById('modalVenda').classList.remove('hidden'); }
 function abrirPagamento(id) { idAtual = id; document.getElementById('modalPaga').classList.remove('hidden'); }
+function abrirVenda(id) { idAtual = id; document.getElementById('modalVenda').classList.remove('hidden'); }
 function fecharModais() { document.getElementById('modalVenda').classList.add('hidden'); document.getElementById('modalPaga').classList.add('hidden'); }
+
+function confirmarPagamento() {
+    const valor = parseFloat(document.getElementById('pagaValor').value);
+    const metodo = document.getElementById('pagaMetodo').value;
+    if(!valor || valor <= 0) return;
+    const c = clientes.find(x => x.id === idAtual);
+    c.historico.unshift({ id: Date.now(), tipo: 'pagamento', valor, metodo, data: new Date().toISOString() });
+    c.saldo -= valor;
+    fecharModais();
+    salvar();
+    document.getElementById('pagaValor').value = "";
+}
 
 function confirmarVenda() {
     const prod = document.getElementById('vendaNome').value;
     const qtd = parseInt(document.getElementById('vendaQtd').value) || 1;
     const preco = parseFloat(document.getElementById('vendaPreco').value) || 0;
     if(!prod || preco <= 0) return;
-    
     const c = clientes.find(x => x.id === idAtual);
     const total = qtd * preco;
     c.historico.unshift({ id: Date.now(), tipo: 'venda', prod, qtd, valor: total, data: new Date().toISOString() });
-    c.saldo = (c.saldo || 0) + total;
+    c.saldo += total;
     fecharModais();
     salvar();
-    ['vendaNome', 'vendaQtd', 'vendaPreco'].forEach(i => document.getElementById(i).value = "");
-}
-
-function confirmarPagamento() {
-    const valor = parseFloat(document.getElementById('pagaValor').value) || 0;
-    if(valor <= 0) return;
-    const c = clientes.find(x => x.id === idAtual);
-    c.historico.unshift({ id: Date.now(), tipo: 'pagamento', valor, data: new Date().toISOString() });
-    c.saldo = (c.saldo || 0) - valor;
-    fecharModais();
-    salvar();
-    document.getElementById('pagaValor').value = "";
 }
 
 function verDetalhes(id) {
     const c = clientes.find(x => x.id === id);
     if(!c) return;
-    idAtual = id;
     document.getElementById('detalheNome').innerText = c.nome;
-    document.getElementById('detalheSub').innerText = c.telefone ? `WhatsApp: ${c.telefone}` : "Sem telefone cadastrado";
+    document.getElementById('detalheSub').innerText = c.telefone || "Sem telefone";
     
-    const totalComprado = (c.historico || []).filter(h => h.tipo === 'venda').reduce((acc, h) => acc + (h.valor || 0), 0);
-    const totalPago = (c.historico || []).filter(h => h.tipo === 'pagamento').reduce((acc, h) => acc + (h.valor || 0), 0);
+    const comprado = (c.historico || []).filter(h => h.tipo === 'venda').reduce((acc, h) => acc + h.valor, 0);
+    const pago = (c.historico || []).filter(h => h.tipo === 'pagamento').reduce((acc, h) => acc + h.valor, 0);
 
     let html = `
-        <div class="grid grid-cols-3 gap-4 mb-8">
-            <div class="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 text-center">
-                <p class="text-[10px] text-slate-500 uppercase font-black mb-1">Comprado</p>
-                <h3 class="text-xl font-bold text-white">R$ ${totalComprado.toFixed(2)}</h3>
+        <div class="grid grid-cols-3 gap-4 mb-8 text-center">
+            <div class="bg-slate-800 p-4 rounded-3xl border border-slate-700">
+                <p class="text-[10px] text-slate-500 uppercase font-black">Comprado</p>
+                <h3 class="text-xl font-bold">R$ ${comprado.toFixed(2)}</h3>
             </div>
-            <div class="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 text-center">
-                <p class="text-[10px] text-slate-500 uppercase font-black mb-1">Pago</p>
-                <h3 class="text-xl font-bold text-emerald-400">R$ ${totalPago.toFixed(2)}</h3>
+            <div class="bg-slate-800 p-4 rounded-3xl border border-slate-700">
+                <p class="text-[10px] text-slate-500 uppercase font-black">Pago</p>
+                <h3 class="text-xl font-bold text-emerald-400">R$ ${pago.toFixed(2)}</h3>
             </div>
-            <div class="bg-slate-800/80 p-5 rounded-3xl border border-rose-500/20 text-center">
-                <p class="text-[10px] text-slate-500 uppercase font-black mb-1">Saldo</p>
-                <h3 class="text-xl font-bold text-rose-500">R$ ${(totalComprado - totalPago).toFixed(2)}</h3>
+            <div class="bg-slate-800 p-4 rounded-3xl border border-rose-500/20">
+                <p class="text-[10px] text-slate-500 uppercase font-black">Saldo</p>
+                <h3 class="text-xl font-bold text-rose-500">R$ ${c.saldo.toFixed(2)}</h3>
             </div>
         </div>
         <div class="space-y-3">
@@ -278,22 +257,20 @@ function verDetalhes(id) {
 
     (c.historico || []).forEach(h => {
         const isVenda = h.tipo === 'venda';
-        const dataRaw = h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data);
-        const dataStr = isNaN(dataRaw) ? "---" : dataRaw.toLocaleDateString('pt-BR');
-        
+        const data = new Date(h.data).toLocaleDateString('pt-BR');
         html += `
-            <div class="flex justify-between items-center bg-slate-900/40 p-5 rounded-2xl border border-slate-800/50 hover:border-emerald-500/30 transition-all">
+            <div class="flex justify-between items-center bg-slate-900/40 p-5 rounded-2xl border border-slate-800">
                 <div class="flex items-center gap-4">
                     <div class="p-3 rounded-xl ${isVenda ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">
                         <i data-lucide="${isVenda ? 'shopping-bag' : 'check-circle'}" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">${dataStr}</p>
-                        <p class="font-bold text-sm uppercase">${isVenda ? `<span class="text-blue-400 font-mono">${h.qtd}x</span> ${h.prod}` : 'Pagamento Efetuado'}</p>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase">${data}</p>
+                        <p class="font-bold uppercase text-sm">${isVenda ? `${h.qtd}x ${h.prod}` : `PAGAMENTO VIA ${h.metodo || 'DINHEIRO'}`}</p>
                     </div>
                 </div>
                 <span class="font-black text-lg ${isVenda ? 'text-white' : 'text-emerald-400'}">
-                    ${isVenda ? '' : '- '}R$ ${(h.valor || 0).toFixed(2)}
+                    ${isVenda ? '' : '- '}R$ ${h.valor.toFixed(2)}
                 </span>
             </div>
         `;
@@ -302,7 +279,6 @@ function verDetalhes(id) {
     document.getElementById('extratoContent').innerHTML = html + "</div>";
     document.getElementById('secaoDetalhes').classList.remove('hidden');
     lucide.createIcons();
-    window.scrollTo({ top: document.getElementById('secaoDetalhes').offsetTop - 20, behavior: 'smooth' });
 }
 
 function fecharDetalhes() { document.getElementById('secaoDetalhes').classList.add('hidden'); }
@@ -313,43 +289,28 @@ function render() {
     container.innerHTML = "";
     clientes.filter(c => c.nome.toLowerCase().includes(busca) || (c.apelido && c.apelido.toLowerCase().includes(busca)))
     .forEach(c => {
-        const saldo = c.saldo || 0;
         container.innerHTML += `
             <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center animate-fade-in shadow-lg">
                 <div onclick="verDetalhes(${c.id})" class="cursor-pointer flex-1">
-                    <h4 class="font-bold text-lg text-white uppercase leading-tight">${c.nome}</h4>
-                    <p class="text-xs text-slate-500 font-bold uppercase mt-1">
-                        Dia ${c.vencimento} • <span class="${saldo > 0 ? 'text-rose-400' : 'text-emerald-400'}">R$ ${saldo.toFixed(2)}</span>
-                    </p>
+                    <h4 class="font-bold text-lg text-white uppercase">${c.nome}</h4>
+                    <p class="text-xs text-slate-500 font-bold">Vencimento: Dia ${c.vencimento} • <span class="${c.saldo > 0 ? 'text-rose-400' : 'text-emerald-400'}">R$ ${c.saldo.toFixed(2)}</span></p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="abrirVenda(${c.id})" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl transition-all"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
                     <button onclick="abrirPagamento(${c.id})" class="p-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all"><i data-lucide="dollar-sign" class="w-5 h-5"></i></button>
-                    <button onclick="excluirCliente(${c.id})" class="p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                 </div>
             </div>`;
     });
     lucide.createIcons();
 }
 
-function excluirCliente(id) {
-    if(!confirm("Apagar cliente?")) return;
-    clientes = clientes.filter(c => c.id !== id);
-    salvar();
-}
-
 function atualizarDashboard() {
-    let total = 0, atrasados = 0;
+    const total = clientes.reduce((acc, c) => acc + c.saldo, 0);
     const hoje = new Date().getDate();
-    clientes.forEach(c => {
-        const s = c.saldo || 0;
-        total += s;
-        if(s > 0 && hoje > c.vencimento) atrasados++;
-    });
+    const atrasados = clientes.filter(c => c.saldo > 0 && hoje > c.vencimento).length;
     document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2)}`;
     document.getElementById('dashAtrasados').innerText = atrasados;
 }
 </script>
-
 </body>
 </html>
