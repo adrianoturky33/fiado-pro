@@ -7,25 +7,26 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 🔥 FIREBASE (ADICIONADO) -->
+    <!-- 🔥 FIREBASE (CORRIGIDO) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } 
+        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
-  apiKey: "AIzaSyBloWH-Tf183YRw945ho8Jcc_EqsfD38tM",
-  authDomain: "sistema-fiado.firebaseapp.com",
-  projectId: "sistema-fiado",
-  storageBucket: "sistema-fiado.firebasestorage.app",
-  messagingSenderId: "28950483459",
-  appId: "1:28950483459:web:8382ad04e6b9ebe076f436"
-};
+            apiKey: "AIzaSyBloWH-Tf183YRw945ho8Jcc_EqsfD38tM",
+            authDomain: "sistema-fiado.firebaseapp.com",
+            projectId: "sistema-fiado",
+            storageBucket: "sistema-fiado.firebasestorage.app",
+            messagingSenderId: "28950483459",
+            appId: "1:28950483459:web:8382ad04e6b9ebe076f436"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // deixa global
         window.db = db;
+        window.fb = { collection, getDocs, addDoc, deleteDoc, doc };
     </script>
 
     <style>
@@ -57,6 +58,7 @@
             <button onclick="autenticarKey()" class="btn-gradient w-full p-4 rounded-2xl font-bold text-white">Ativar Sistema</button>
         </div>
     </div>
+
     <div class="max-w-5xl mx-auto p-4 md:p-8">
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
             <div>
@@ -100,60 +102,10 @@
         </div>
 
         <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
-
-        <section id="secaoDetalhes" class="hidden glass-card p-6 rounded-3xl animate-fade-in border-t-4 border-emerald-500">
-            <div class="flex justify-between items-center mb-8">
-                <h2 id="detalheNome" class="text-2xl font-bold text-white">Extrato</h2>
-                <button onclick="fecharDetalhes()" class="p-2 hover:bg-slate-700 rounded-full text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
-            </div>
-            <div id="extratoContent"></div>
-        </section>
     </div>
 
-    <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2rem] border border-slate-700 shadow-2xl">
-            <h3 class="text-2xl font-bold mb-6 flex items-center gap-3 text-blue-400"><i data-lucide="shopping-cart"></i> Nova Venda</h3>
-            <div class="space-y-4">
-                <input id="vendaProd" placeholder="Produto/Serviço" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none">
-                <div class="flex gap-4">
-                    <input id="vendaQtd" type="number" value="1" class="w-20 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white">
-                    <input id="vendaPreco" type="number" step="0.01" inputmode="decimal" placeholder="Preço Unit. R$" class="flex-1 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500">
-                </div>
-                <button onclick="adicionarAoCarrinho()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold transition-all">+ Adicionar Item</button>
-                <div id="carrinhoTemp" class="max-h-40 overflow-y-auto bg-[#0f172a]/50 p-4 rounded-xl space-y-2 text-sm border border-slate-800"></div>
-                <div class="flex justify-between items-center pt-4 border-t border-slate-700">
-                    <span class="text-slate-400">Total:</span>
-                    <span id="totalVenda" class="text-2xl font-black text-yellow-500">R$ 0,00</span>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="fecharModais()" class="bg-slate-700 p-4 rounded-xl">Cancelar</button>
-                    <button onclick="concluirVenda()" class="bg-emerald-600 p-4 rounded-xl font-bold">Lançar Fiado</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="modalPaga" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700 shadow-2xl text-center">
-            <h3 class="text-2xl font-bold mb-2">Receber Valor</h3>
-            <p class="text-slate-400 mb-6 text-sm">Dívida: <span id="pagaSaldoAtual" class="font-bold text-white"></span></p>
-            <input id="pagaValor" type="number" step="0.01" inputmode="decimal" placeholder="R$ 0,00" class="w-full bg-[#0f172a] border border-slate-700 p-5 rounded-2xl text-center text-3xl font-black text-emerald-400 outline-none mb-4">
-            <select id="pagaMetodo" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl mb-6 text-white">
-                <option value="PIX">PIX</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Cartão">Cartão</option>
-            </select>
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="fecharModais()" class="bg-slate-700 p-4 rounded-xl">Voltar</button>
-                <button onclick="confirmarPagamento()" class="bg-emerald-600 p-4 rounded-xl font-bold">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
+<script>
 let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
-let idAtual = null; 
-let carrinho = [];
 
 window.onload = () => {
     if(localStorage.getItem('ka_session')) {
@@ -163,8 +115,6 @@ window.onload = () => {
     lucide.createIcons();
     render();
     atualizarDashboard();
-
-    // 🔥 carregar firebase ao iniciar
     carregarFirebase();
 };
 
@@ -182,7 +132,6 @@ function logout() {
     } 
 }
 
-// 🔥 SALVAR LOCAL + FIREBASE
 function salvar() {
     localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
     salvarFirebase();
@@ -190,23 +139,18 @@ function salvar() {
     atualizarDashboard();
 }
 
-// 🔥 SALVAR NO FIREBASE (SEM DUPLICAR BUGADO)
 async function salvarFirebase() {
     if (!window.db) return;
 
-    const { collection, getDocs, deleteDoc, doc, addDoc } =
-        await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-
     try {
-        // limpa coleção antes (evita duplicação)
-        const snapshot = await getDocs(collection(window.db, "clientes"));
+        const snapshot = await fb.getDocs(fb.collection(db, "clientes"));
+
         for (const d of snapshot.docs) {
-            await deleteDoc(doc(window.db, "clientes", d.id));
+            await fb.deleteDoc(fb.doc(db, "clientes", d.id));
         }
 
-        // salva novamente
         for (let c of clientes) {
-            await addDoc(collection(window.db, "clientes"), c);
+            await fb.addDoc(fb.collection(db, "clientes"), c);
         }
 
     } catch (e) {
@@ -214,15 +158,11 @@ async function salvarFirebase() {
     }
 }
 
-// 🔥 CARREGAR DO FIREBASE
 async function carregarFirebase() {
     if (!window.db) return;
 
-    const { collection, getDocs } =
-        await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-
     try {
-        const snapshot = await getDocs(collection(window.db, "clientes"));
+        const snapshot = await fb.getDocs(fb.collection(db, "clientes"));
         const dados = snapshot.docs.map(doc => doc.data());
 
         if (dados.length > 0) {
@@ -234,9 +174,64 @@ async function carregarFirebase() {
         console.log("Erro ao carregar Firebase:", e);
     }
 }
-</script>
 
+function cadastrarCliente() {
+    const nome = document.getElementById('inNome').value;
+    const venc = document.getElementById('inVenc').value;
+
+    if(!nome || !venc) return alert("Preencha Nome e Vencimento!");
+
+    clientes.push({ 
+        id: Date.now(), 
+        nome, 
+        apelido: document.getElementById('inApelido').value,
+        telefone: document.getElementById('inTel').value,
+        vencimento: parseInt(venc),
+        saldo: 0, 
+        totalComprado: 0, 
+        totalPago: 0, 
+        historico: [] 
+    });
+
+    ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
+    salvar();
+}
+
+function render() {
+    const container = document.getElementById('listaClientes');
+    const busca = document.getElementById('inputBusca').value.toLowerCase();
+    container.innerHTML = "";
+
+    clientes.filter(c => 
+        c.nome.toLowerCase().includes(busca) || 
+        (c.apelido && c.apelido.toLowerCase().includes(busca))
+    ).forEach(c => {
+        container.innerHTML += `
+            <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center">
+                <div>
+                    <h4 class="font-bold text-white">${c.nome}</h4>
+                    <p class="text-sm text-slate-400">Saldo: R$ ${c.saldo.toFixed(2)}</p>
+                </div>
+            </div>
+        `;
+    });
+
+    lucide.createIcons();
+}
+
+function atualizarDashboard() {
+    let total = 0, atrasados = 0;
+    const hoje = new Date().getDate();
+
+    clientes.forEach(c => {
+        total += c.saldo;
+        if(c.saldo > 0 && hoje > c.vencimento) atrasados++;
+    });
+
+    document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2)}`;
+    document.getElementById('dashAtrasados').innerText = atrasados;
+}
+</script>
 
 </body>
 </html>
-
