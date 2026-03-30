@@ -9,7 +9,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, deleteDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBloWH-Tf183YRw945ho8Jcc_EqsfD38tM",
@@ -22,363 +22,260 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        window.db = db; // Deixa global para o restante do script
+
+        // Funções de Banco de Dados exportadas para o escopo Global (window)
+        window.salvarFirebase = async (listaClientes) => {
+            try {
+                const colRef = collection(db, "clientes");
+                const snapshot = await getDocs(colRef);
+                // Limpa o banco atual antes de subir a nova lista (Sincronização Total)
+                for (const d of snapshot.docs) { await deleteDoc(doc(db, "clientes", d.id)); }
+                for (let c of listaClientes) { await addDoc(colRef, c); }
+                console.log("Sincronizado com Firebase");
+            } catch (e) { console.error("Erro Firebase Save:", e); }
+        };
+
+        window.carregarFirebase = async () => {
+            try {
+                const snapshot = await getDocs(collection(db, "clientes"));
+                const dados = snapshot.docs.map(d => d.data());
+                if (dados.length > 0) {
+                    window.clientes = dados;
+                    window.render();
+                    window.atualizarDashboard();
+                }
+            } catch (e) { console.error("Erro Firebase Load:", e); }
+        };
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
-        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; background-color: #0f172a; color: #e2e8f0; }
-        .font-mono { font-family: 'JetBrains+Mono', monospace; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
         .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .input-glow:focus { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); border-color: #10b981; }
-        .btn-gradient { background: linear-gradient(180deg, #10b981 0%, #059669 100%); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .btn-gradient:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4); }
-        .card-cliente { transition: all 0.2s ease; cursor: pointer; }
-        .card-cliente:hover { transform: scale(1.01); background-color: #1e293b; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .btn-gradient { background: linear-gradient(180deg, #10b981 0%, #059669 100%); transition: all 0.2s; }
+        .card-cliente { transition: all 0.2s; cursor: pointer; }
+        .card-cliente:hover { background-color: #1e293b; transform: translateY(-2px); }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="custom-scroll min-h-screen">
+<body class="min-h-screen">
 
     <div id="lockScreen" class="fixed inset-0 bg-[#0b1222] z-[100] flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center relative overflow-hidden">
-            <div class="relative bg-[#1e293b] p-4 rounded-2xl border border-slate-700 text-emerald-500 inline-block mb-6">
-                <i data-lucide="shield-check" class="w-10 h-10"></i>
-            </div>
+        <div class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center shadow-2xl">
             <h2 class="text-3xl font-bold text-white mb-8">Acesso Restrito</h2>
-            <input id="keyInput" type="password" placeholder="Licença de Acesso" class="w-full bg-[#0f172a]/80 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none mb-4 input-glow">
-            <button onclick="autenticarKey()" class="btn-gradient w-full p-4 rounded-2xl font-bold text-white">Ativar Sistema</button>
+            <input id="keyInput" type="password" placeholder="Licença de Acesso" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-2xl text-center text-white mb-4 outline-none focus:border-emerald-500">
+            <button onclick="autenticarKey()" class="btn-gradient w-full p-4 rounded-2xl font-bold text-white shadow-lg">Ativar Sistema</button>
         </div>
     </div>
 
     <div class="max-w-5xl mx-auto p-4 md:p-8">
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
             <div>
-                <h1 class="text-4xl font-black flex items-center gap-3 text-white tracking-tight">
-                    <i data-lucide="wallet" class="text-emerald-500 w-10 h-10"></i> FIADO PRO
+                <h1 class="text-4xl font-black text-white flex items-center gap-3">
+                    <i data-lucide="wallet" class="text-emerald-500"></i> FIADO PRO
                 </h1>
-                <p class="text-slate-400 mt-1 flex items-center gap-2">
-                    <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Terminal Cloud
-                </p>
+                <p class="text-slate-400 mt-1">Terminal de Operações</p>
             </div>
-            <div class="flex gap-4 w-full md:w-auto">
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex-1 min-w-[140px]">
-                    <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">A Receber</p>
+            <div class="flex gap-4">
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 min-w-[120px]">
+                    <p class="text-[10px] text-slate-500 uppercase font-black">A Receber</p>
                     <h2 id="dashTotal" class="text-2xl font-bold text-emerald-400">R$ 0,00</h2>
                 </div>
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex-1 min-w-[140px]">
-                    <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Atrasados</p>
-                    <h2 id="dashAtrasados" class="text-2xl font-bold text-rose-500">0</h2>
-                </div>
-                <button onclick="logout()" class="p-4 bg-slate-800 hover:bg-rose-500/20 hover:text-rose-500 text-slate-400 rounded-2xl border border-slate-700 transition-all">
-                    <i data-lucide="log-out" class="w-6 h-6"></i>
+                <button onclick="logout()" class="p-4 bg-slate-800 hover:bg-rose-900/20 rounded-2xl border border-slate-700 transition-colors">
+                    <i data-lucide="log-out" class="text-rose-500"></i>
                 </button>
             </div>
         </header>
 
-        <section class="glass-card p-6 rounded-3xl mb-10">
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <input id="inNome" placeholder="Nome Completo *" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <input id="inApelido" placeholder="Apelido" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <input id="inTel" type="tel" placeholder="WhatsApp" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <input id="inVenc" type="number" min="1" max="31" placeholder="Vencimento (Dia)" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl outline-none text-white focus:border-emerald-500">
-                <button onclick="cadastrarCliente()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-xl transition-all flex items-center justify-center gap-2">
-                    <i data-lucide="save" class="w-4 h-4"></i> Salvar
-                </button>
-            </div>
+        <section class="glass-card p-6 rounded-3xl mb-10 grid grid-cols-1 md:grid-cols-5 gap-4">
+            <input id="inNome" placeholder="Nome *" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none focus:border-emerald-500">
+            <input id="inApelido" placeholder="Apelido" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
+            <input id="inTel" type="tel" placeholder="WhatsApp" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
+            <input id="inVenc" type="number" placeholder="Venc. (Dia)" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
+            <button onclick="cadastrarCliente()" class="bg-emerald-600 hover:bg-emerald-500 p-3 rounded-xl font-bold text-white transition-colors">Salvar</button>
         </section>
 
         <div class="relative mb-8">
             <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"></i>
-            <input id="inputBusca" oninput="render()" placeholder="Buscar cliente por nome ou apelido..." class="w-full bg-[#1e293b]/50 border border-slate-700 p-5 pl-14 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-lg shadow-2xl">
+            <input id="inputBusca" oninput="render()" placeholder="Buscar cliente por nome ou apelido..." class="w-full bg-[#1e293b]/50 border border-slate-700 p-5 pl-12 rounded-2xl outline-none text-lg focus:border-emerald-500 transition-all">
         </div>
 
         <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12"></div>
 
-        <section id="secaoDetalhes" class="hidden glass-card p-6 rounded-3xl animate-fade-in border-t-4 border-emerald-500">
+        <section id="secaoDetalhes" class="hidden glass-card p-6 rounded-3xl animate-fade-in border-t-4 border-emerald-500 mb-20">
             <div class="flex justify-between items-center mb-8">
-                <h2 id="detalheNome" class="text-2xl font-bold text-white">Extrato</h2>
-                <button onclick="fecharDetalhes()" class="p-2 hover:bg-slate-700 rounded-full text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h2 id="detalheNome" class="text-2xl font-bold text-white uppercase tracking-tight">Extrato</h2>
+                <button onclick="fecharDetalhes()" class="p-2 hover:bg-slate-700 rounded-full transition-colors"><i data-lucide="x"></i></button>
             </div>
-            <div id="extratoContent"></div>
+            <div id="extratoContent" class="space-y-3"></div>
         </section>
     </div>
 
-    <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2rem] border border-slate-700 shadow-2xl">
-            <h3 class="text-2xl font-bold mb-6 flex items-center gap-3 text-blue-400"><i data-lucide="shopping-cart"></i> Nova Venda</h3>
-            <div class="space-y-4">
-                <input id="vendaProd" placeholder="Produto/Serviço" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none">
-                <div class="flex gap-4">
-                    <input id="vendaQtd" type="number" value="1" class="w-20 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white">
-                    <input id="vendaPreco" type="number" step="0.01" inputmode="decimal" placeholder="Preço Unit. R$" class="flex-1 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500">
-                </div>
-                <button onclick="adicionarAoCarrinho()" class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-bold transition-all">+ Adicionar Item</button>
-                <div id="carrinhoTemp" class="max-h-40 overflow-y-auto bg-[#0f172a]/50 p-4 rounded-xl space-y-2 text-sm border border-slate-800"></div>
-                <div class="flex justify-between items-center pt-4 border-t border-slate-700">
-                    <span class="text-slate-400">Total:</span>
-                    <span id="totalVenda" class="text-2xl font-black text-yellow-500">R$ 0,00</span>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="fecharModais()" class="bg-slate-700 p-4 rounded-xl">Cancelar</button>
-                    <button onclick="concluirVenda()" class="bg-emerald-600 p-4 rounded-xl font-bold">Lançar Fiado</button>
-                </div>
+    <div id="modalVenda" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-[#1e293b] w-full max-w-md p-8 rounded-[2.5rem] border border-slate-700 shadow-2xl">
+            <h3 class="text-2xl font-bold mb-6 text-emerald-400 flex items-center gap-2">
+                <i data-lucide="shopping-cart"></i> Lançar Fiado
+            </h3>
+            <input id="vendaProd" placeholder="Produto/Descrição" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white mb-4 outline-none focus:border-emerald-500">
+            <div class="flex gap-4 mb-6">
+                <input id="vendaQtd" type="number" value="1" class="w-24 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none">
+                <input id="vendaPreco" type="number" step="0.01" placeholder="Preço R$" class="flex-1 bg-[#0f172a] border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-emerald-500">
             </div>
-        </div>
-    </div>
-
-    <div id="modalPaga" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div class="bg-[#1e293b] w-full max-w-sm p-8 rounded-[2rem] border border-slate-700 shadow-2xl text-center">
-            <h3 class="text-2xl font-bold mb-2">Receber Valor</h3>
-            <p class="text-slate-400 mb-6 text-sm">Dívida: <span id="pagaSaldoAtual" class="font-bold text-white"></span></p>
-            <input id="pagaValor" type="number" step="0.01" inputmode="decimal" placeholder="R$ 0,00" class="w-full bg-[#0f172a] border border-slate-700 p-5 rounded-2xl text-center text-3xl font-black text-emerald-400 outline-none mb-4">
-            <select id="pagaMetodo" class="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-xl mb-6 text-white">
-                <option value="PIX">PIX</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Cartão">Cartão</option>
-            </select>
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="fecharModais()" class="bg-slate-700 p-4 rounded-xl">Voltar</button>
-                <button onclick="confirmarPagamento()" class="bg-emerald-600 p-4 rounded-xl font-bold">Confirmar</button>
-            </div>
+            <button onclick="concluirVenda()" class="w-full btn-gradient p-4 rounded-xl font-bold text-lg text-white mb-3">Confirmar Venda</button>
+            <button onclick="fecharModais()" class="w-full text-slate-500 font-medium hover:text-slate-300 transition-colors">Cancelar</button>
         </div>
     </div>
 
     <script>
-        let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
-        let idAtual = null; 
-        let carrinho = [];
+        // Inicialização de Dados
+        window.clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
+        let idAtual = null;
 
         window.onload = () => {
             if(localStorage.getItem('ka_session')) document.getElementById('lockScreen').remove();
             lucide.createIcons();
-            render();
-            atualizarDashboard();
-            carregarFirebase(); // Sincroniza com a nuvem ao abrir
+            window.render();
+            window.atualizarDashboard();
+            if(window.carregarFirebase) window.carregarFirebase();
         };
 
-        // 🔐 LOGIN
-        function autenticarKey() {
-            if(document.getElementById('keyInput').value.length > 2) {
-                localStorage.setItem('ka_session', '1');
+        window.autenticarKey = () => {
+            const input = document.getElementById('keyInput').value;
+            if(input.length >= 3) {
+                localStorage.setItem('ka_session', 'true');
                 document.getElementById('lockScreen').remove();
+            } else {
+                alert("Chave Inválida");
             }
-        }
+        };
 
-        function logout() { if(confirm("Sair do sistema?")) { localStorage.removeItem('ka_session'); location.reload(); } }
+        window.logout = () => { 
+            if(confirm("Deseja sair do sistema?")) {
+                localStorage.removeItem('ka_session'); 
+                location.reload(); 
+            }
+        };
 
-        // 💾 SALVAR (Local + Firebase)
-        function salvar() {
-            localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-            render(); 
-            atualizarDashboard();
-            salvarFirebase();
-        }
-
-        async function salvarFirebase() {
-            if (!window.db) return;
-            const { collection, getDocs, deleteDoc, doc, addDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-            try {
-                const snapshot = await getDocs(collection(window.db, "clientes"));
-                for (const d of snapshot.docs) { await deleteDoc(doc(window.db, "clientes", d.id)); }
-                for (let c of clientes) { await addDoc(collection(window.db, "clientes"), c); }
-            } catch (e) { console.log("Erro Firebase:", e); }
-        }
-
-        async function carregarFirebase() {
-            if (!window.db) return;
-            const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-            try {
-                const snapshot = await getDocs(collection(window.db, "clientes"));
-                const dados = snapshot.docs.map(doc => doc.data());
-                if (dados.length > 0) {
-                    clientes = dados;
-                    render();
-                    atualizarDashboard();
-                }
-            } catch (e) { console.log("Erro carregar Firebase:", e); }
-        }
-
-        // ➕ CLIENTES
-        function cadastrarCliente() {
-            const nome = document.getElementById('inNome').value;
-            const venc = document.getElementById('inVenc').value;
-            if(!nome || !venc) return alert("Preencha Nome e Vencimento!");
-            clientes.push({ 
-                id: Date.now(), 
-                nome, 
-                apelido: document.getElementById('inApelido').value,
-                telefone: document.getElementById('inTel').value,
-                vencimento: parseInt(venc),
-                saldo: 0, totalComprado: 0, totalPago: 0, historico: [] 
-            });
-            ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
-            salvar();
-        }
-
-        function render() {
+        window.render = () => {
             const container = document.getElementById('listaClientes');
             const busca = document.getElementById('inputBusca').value.toLowerCase();
-            const hoje = new Date().getDate();
             container.innerHTML = "";
             
-            clientes.filter(c => c.nome.toLowerCase().includes(busca) || (c.apelido && c.apelido.toLowerCase().includes(busca)))
+            window.clientes
+            .filter(c => c.nome.toLowerCase().includes(busca) || (c.apelido && c.apelido.toLowerCase().includes(busca)))
             .forEach(c => {
-                const atrasado = c.saldo > 0 && hoje > c.vencimento;
                 container.innerHTML += `
-                    <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center group animate-fade-in shadow-lg">
-                        <div onclick="verDetalhes(${c.id})" class="flex-1">
-                            <h4 class="font-bold text-lg text-white uppercase">${c.nome} ${c.apelido ? `<span class="text-emerald-400 text-xs ml-2">[${c.apelido}]</span>` : ''}</h4>
-                            <p class="text-xs ${atrasado ? 'text-rose-500' : 'text-slate-500'} font-bold">Vencimento: Dia ${c.vencimento} • Saldo: R$ ${c.saldo.toFixed(2).replace('.',',')}</p>
+                    <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center shadow-lg animate-fade-in group">
+                        <div onclick="window.verDetalhes(${c.id})" class="flex-1">
+                            <h4 class="font-bold text-white uppercase">${c.nome} ${c.apelido ? `<span class="text-emerald-500/50 text-xs">(${c.apelido})</span>` : ''}</h4>
+                            <p class="text-xs ${c.saldo > 0 ? 'text-rose-400' : 'text-slate-500'} font-semibold">
+                                Saldo: R$ ${c.saldo.toFixed(2)}
+                            </p>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="abrirVenda(${c.id})" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl transition-all"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
-                            <button onclick="abrirPagamento(${c.id})" class="p-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all"><i data-lucide="dollar-sign" class="w-5 h-5"></i></button>
-                            <button onclick="excluirCliente(${c.id})" class="p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                            <button onclick="window.abrirVenda(${c.id})" class="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500 hover:text-white transition-all"><i data-lucide="plus"></i></button>
+                            <button onclick="window.excluirCliente(${c.id})" class="p-3 bg-rose-500/10 text-rose-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"><i data-lucide="trash-2"></i></button>
                         </div>
                     </div>`;
             });
             lucide.createIcons();
-        }
+        };
 
-        // 🛒 VENDAS
-        function abrirVenda(id) { 
-            idAtual = id; carrinho = []; 
-            atualizarCarrinhoUI(); 
-            document.getElementById('modalVenda').classList.remove('hidden');
-            setTimeout(() => document.getElementById('vendaProd').focus(), 100);
-        }
-
-        function adicionarAoCarrinho() {
-            const n = document.getElementById('vendaProd').value;
-            const q = parseInt(document.getElementById('vendaQtd').value) || 1;
-            const p = parseFloat(document.getElementById('vendaPreco').value);
-            if(!n || !p) return;
-            carrinho.push({ nome: n, qtd: q, preco: p });
-            document.getElementById('vendaProd').value = "";
-            document.getElementById('vendaPreco').value = "";
-            document.getElementById('vendaProd').focus();
-            atualizarCarrinhoUI();
-        }
-
-        function atualizarCarrinhoUI() {
-            const div = document.getElementById('carrinhoTemp');
-            div.innerHTML = carrinho.map((i, idx) => `
-                <div class="flex justify-between items-center bg-slate-800 p-2 rounded-lg text-xs">
-                    <span>${i.qtd}x ${i.nome}</span>
-                    <span class="font-bold text-blue-400">R$ ${(i.qtd*i.preco).toFixed(2)}</span>
-                    <button onclick="carrinho.splice(${idx},1);atualizarCarrinhoUI()" class="text-rose-500"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
-                </div>`).join('');
-            const total = carrinho.reduce((acc, i) => acc + (i.qtd * i.preco), 0);
-            document.getElementById('totalVenda').innerText = `R$ ${total.toFixed(2).replace('.',',')}`;
-            lucide.createIcons();
-        }
-
-        function concluirVenda() {
-            if(carrinho.length === 0) return;
-            const c = clientes.find(x => x.id === idAtual);
-            const total = carrinho.reduce((acc, i) => acc + (i.qtd * i.preco), 0);
-            c.historico.unshift({ id: Date.now(), data: new Date(), tipo: 'venda', itens: [...carrinho], total: total });
-            c.saldo += total;
-            c.totalComprado += total;
-            fecharModais(); salvar();
-        }
-
-        // 💰 PAGAMENTOS
-        function abrirPagamento(id) {
-            idAtual = id;
-            const c = clientes.find(x => x.id === id);
-            document.getElementById('pagaSaldoAtual').innerText = `R$ ${c.saldo.toFixed(2).replace('.',',')}`;
-            document.getElementById('modalPaga').classList.remove('hidden');
-            setTimeout(() => document.getElementById('pagaValor').focus(), 100);
-        }
-
-        function confirmarPagamento() {
-            const v = parseFloat(document.getElementById('pagaValor').value);
-            if(!v || v <= 0) return;
-            const c = clientes.find(x => x.id === idAtual);
-            c.historico.unshift({ id: Date.now(), data: new Date(), tipo: 'pagamento', valor: v, metodo: document.getElementById('pagaMetodo').value });
-            c.saldo -= v;
-            c.totalPago += v;
-            fecharModais(); salvar();
-        }
-
-        // 📑 EXTRATO (COM QUANTIDADES)
-        function verDetalhes(id) {
-            const c = clientes.find(x => x.id === id);
-            idAtual = id;
-            document.getElementById('detalheNome').innerHTML = `${c.nome} <span class="text-slate-500 text-sm ml-2 font-normal">${c.telefone || ''}</span>`;
+        window.cadastrarCliente = () => {
+            const nome = document.getElementById('inNome').value;
+            const venc = document.getElementById('inVenc').value;
+            if(!nome || !venc) return alert("Nome e Vencimento são obrigatórios!");
             
-            let html = `
-                <div class="grid grid-cols-3 gap-4 mb-8">
-                    <div class="bg-slate-900/50 p-4 rounded-2xl text-center"><p class="text-[10px] text-slate-500 uppercase font-black">Comprado</p><p class="text-xl font-bold">R$ ${c.totalComprado.toFixed(2)}</p></div>
-                    <div class="bg-slate-900/50 p-4 rounded-2xl text-center"><p class="text-[10px] text-slate-500 uppercase font-black">Pago</p><p class="text-xl font-bold text-emerald-400">R$ ${c.totalPago.toFixed(2)}</p></div>
-                    <div class="bg-slate-900/50 p-4 rounded-2xl text-center border border-slate-700"><p class="text-[10px] text-slate-500 uppercase font-black">Saldo</p><p class="text-xl font-bold text-rose-500">R$ ${c.saldo.toFixed(2)}</p></div>
-                </div><div class="space-y-3">`;
-
-            c.historico.forEach(h => {
-                const isV = h.tipo === 'venda';
-                const descricao = isV 
-                    ? h.itens.map(i => `<span class="text-blue-400 font-mono">${i.qtd}x</span> ${i.nome}`).join(', ')
-                    : 'Pagamento via ' + h.metodo;
-
-                html += `
-                <div class="bg-slate-800/30 p-4 rounded-2xl flex justify-between items-center border border-slate-800 hover:border-slate-700 transition-all">
-                    <div class="flex items-center gap-4">
-                        <div class="p-2 rounded-xl ${isV ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">
-                            <i data-lucide="${isV ? 'shopping-bag' : 'check-circle'}" class="w-5 h-5"></i>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-slate-500">${new Date(h.data).toLocaleString('pt-BR')}</p>
-                            <p class="text-sm font-bold uppercase tracking-tight">${descricao}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-6">
-                        <span class="text-lg font-black ${isV ? 'text-white' : 'text-emerald-400'}">
-                            ${isV ? '' : '-'} R$ ${(isV ? h.total : h.valor).toFixed(2)}
-                        </span>
-                        <button onclick="removerTransacao(${c.id}, ${h.id})" class="text-slate-600 hover:text-rose-500 transition-colors">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                </div>`;
+            window.clientes.push({
+                id: Date.now(),
+                nome: nome,
+                apelido: document.getElementById('inApelido').value,
+                vencimento: parseInt(venc),
+                saldo: 0,
+                historico: []
             });
+            salvarTudo();
+            ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
+        };
 
-            document.getElementById('extratoContent').innerHTML = html + (c.historico.length === 0 ? '<p class="text-center text-slate-500 py-10">Nenhuma movimentação.</p>' : '') + `</div>`;
+        window.abrirVenda = (id) => { idAtual = id; document.getElementById('modalVenda').classList.remove('hidden'); };
+        
+        window.concluirVenda = () => {
+            const c = window.clientes.find(x => x.id === idAtual);
+            const p = document.getElementById('vendaProd').value;
+            const v = parseFloat(document.getElementById('vendaPreco').value);
+            const q = parseInt(document.getElementById('vendaQtd').value) || 1;
+
+            if(!p || isNaN(v)) return alert("Preencha o produto e o valor corretamente!");
+
+            const totalVenda = v * q;
+            c.historico.unshift({ 
+                data: new Date().toISOString(), // Salva como String ISO para evitar erros de data
+                tipo: 'venda', 
+                prod: `${q}x ${p}`, 
+                valor: totalVenda 
+            });
+            c.saldo += totalVenda;
+            
+            fecharModais();
+            salvarTudo();
+        };
+
+        window.verDetalhes = (id) => {
+            const c = window.clientes.find(x => x.id === id);
+            document.getElementById('detalheNome').innerText = `Histórico: ${c.nome}`;
+            
+            const content = c.historico.map(h => {
+                // Tratamento de data (Firebase vs Local)
+                const dataObj = h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data);
+                const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+
+                return `
+                    <div class="bg-slate-900/50 p-4 rounded-2xl flex justify-between items-center border border-slate-800">
+                        <div>
+                            <p class="text-[10px] text-slate-500 font-bold">${dataFormatada}</p>
+                            <p class="font-bold text-white text-sm uppercase">${h.prod}</p>
+                        </div>
+                        <span class="font-black text-emerald-400">R$ ${h.valor.toFixed(2)}</span>
+                    </div>`;
+            }).join('');
+
+            document.getElementById('extratoContent').innerHTML = content || '<p class="text-slate-500 text-center py-10 uppercase text-xs font-bold tracking-widest">Sem movimentações recentes</p>';
             document.getElementById('secaoDetalhes').classList.remove('hidden');
             window.scrollTo({ top: document.getElementById('secaoDetalhes').offsetTop - 20, behavior: 'smooth' });
-            lucide.createIcons();
+        };
+
+        window.excluirCliente = (id) => {
+            if(confirm("Deseja apagar este cliente e todo o seu histórico?")) {
+                window.clientes = window.clientes.filter(c => c.id !== id);
+                salvarTudo();
+            }
+        };
+
+        function salvarTudo() {
+            localStorage.setItem('fiado_db_v2', JSON.stringify(window.clientes));
+            window.render();
+            window.atualizarDashboard();
+            if(window.salvarFirebase) window.salvarFirebase(window.clientes);
         }
 
-        function removerTransacao(clienteId, transacaoId) {
-            if(!confirm("Remover esta transação?")) return;
-            const c = clientes.find(x => x.id === clienteId);
-            const tIdx = c.historico.findIndex(x => x.id === transacaoId);
-            const t = c.historico[tIdx];
-            if(t.tipo === 'venda') { c.saldo -= t.total; c.totalComprado -= t.total; }
-            else { c.saldo += t.valor; c.totalPago -= t.valor; }
-            c.historico.splice(tIdx, 1);
-            salvar(); verDetalhes(clienteId);
-        }
+        window.atualizarDashboard = () => {
+            const total = window.clientes.reduce((acc, c) => acc + c.saldo, 0);
+            document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2)}`;
+        };
 
-        function excluirCliente(id) { if(confirm("Apagar cliente permanentemente?")) { clientes = clientes.filter(c => c.id !== id); salvar(); fecharDetalhes(); } }
-        function fecharModais() { document.querySelectorAll('#modalVenda, #modalPaga').forEach(m => m.classList.add('hidden')); }
-        function fecharDetalhes() { document.getElementById('secaoDetalhes').classList.add('hidden'); }
+        window.fecharModais = () => {
+            document.getElementById('modalVenda').classList.add('hidden');
+            ['vendaProd', 'vendaPreco'].forEach(id => document.getElementById(id).value = "");
+            document.getElementById('vendaQtd').value = 1;
+        };
         
-        function atualizarDashboard() {
-            let total = 0, atrasados = 0;
-            const hoje = new Date().getDate();
-            clientes.forEach(c => {
-                total += c.saldo;
-                if(c.saldo > 0 && hoje > c.vencimento) atrasados++;
-            });
-            document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2).replace('.',',')}`;
-            document.getElementById('dashAtrasados').innerText = atrasados;
-        }
+        window.fecharDetalhes = () => document.getElementById('secaoDetalhes').classList.add('hidden');
     </script>
 </body>
 </html>
