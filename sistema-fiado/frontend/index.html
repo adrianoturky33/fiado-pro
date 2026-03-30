@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fiado Pro - Estável</title>
+    <title>Fiado Pro - Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -29,7 +29,7 @@
                 const snapshot = await getDocs(colRef);
                 for (const d of snapshot.docs) { await deleteDoc(doc(db, "clientes", d.id)); }
                 for (let c of dados) { await addDoc(colRef, c); }
-            } catch (e) { console.error("Erro Cloud:", e); }
+            } catch (e) { console.error("Erro Firebase:", e); }
         };
 
         window.carregarFirebase = async () => {
@@ -37,11 +37,7 @@
                 const snapshot = await getDocs(collection(db, "clientes"));
                 const dados = snapshot.docs.map(d => d.data());
                 if (dados.length > 0) {
-                    window.clientes = dados.map(c => ({
-                        ...c,
-                        saldo: c.saldo || 0,
-                        historico: c.historico || []
-                    }));
+                    window.clientes = dados;
                     window.render();
                     window.atualizarDashboard();
                 }
@@ -50,53 +46,65 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b1222; color: #e2e8f0; }
-        .glass-card { background: #111a2c; border: 1px solid #1e293b; border-radius: 1.5rem; }
-        .input-dark { background: #0f172a; border: 1px solid #1e293b; padding: 0.75rem; border-radius: 0.75rem; color: white; outline: none; }
-        .btn-primary { background: #10b981; color: white; font-weight: 800; padding: 0.75rem; border-radius: 0.75rem; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-gradient { background: linear-gradient(180deg, #10b981 0%, #059669 100%); transition: all 0.2s; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="min-h-screen p-4">
 
-    <header class="max-w-6xl mx-auto flex justify-between items-center mb-10">
-        <h1 class="text-2xl font-black text-emerald-500">FIADO PRO</h1>
-        <div class="flex gap-4">
-            <div class="glass-card px-4 py-2">
-                <p class="text-[10px] text-slate-500 uppercase font-bold">Total</p>
-                <h2 id="dashTotal" class="text-lg font-bold">R$ 0,00</h2>
-            </div>
+    <header class="max-w-5xl mx-auto flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-black text-white flex items-center gap-2">
+            <i data-lucide="wallet" class="text-emerald-500"></i> FIADO PRO
+        </h1>
+        <div id="dashTotal" class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 text-emerald-400 font-bold">
+            R$ 0,00
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <aside class="lg:col-span-1">
-            <div class="glass-card p-6 space-y-4">
-                <h3 class="font-bold mb-2">Novo Cliente</h3>
-                <input id="inNome" placeholder="Nome" class="input-dark w-full">
-                <input id="inVenc" type="number" placeholder="Dia Vencimento" class="input-dark w-full">
-                <button onclick="cadastrarCliente()" class="btn-primary w-full">SALVAR</button>
-            </div>
-        </aside>
-
-        <section class="lg:col-span-3">
-            <input id="inputBusca" oninput="render()" placeholder="Buscar..." class="input-dark w-full mb-6 py-4 px-6 text-lg">
-            <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    <main class="max-w-5xl mx-auto">
+        <section class="glass-card p-6 rounded-3xl mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input id="inNome" placeholder="Nome *" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
+            <input id="inApelido" placeholder="Apelido" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
+            <input id="inVenc" type="number" placeholder="Venc. (Dia)" class="bg-[#0f172a] border border-slate-700 p-3 rounded-xl text-white outline-none">
+            <button onclick="cadastrarCliente()" class="btn-gradient p-3 rounded-xl font-bold text-white">Salvar</button>
         </section>
+
+        <input id="inputBusca" oninput="render()" placeholder="Buscar cliente..." class="w-full bg-[#1e293b]/50 border border-slate-700 p-4 rounded-2xl mb-8 outline-none text-lg">
+
+        <div id="listaClientes" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </main>
 
-    <div id="secaoDetalhes" class="hidden fixed inset-0 bg-[#0b1222]/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+    <div id="secaoDetalhes" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-3xl p-8 rounded-[2rem] max-h-[90vh] overflow-y-auto border-emerald-500/30 border-2">
             <div class="flex justify-between items-center mb-6">
-                <h2 id="detalheNome" class="text-2xl font-bold"></h2>
-                <button onclick="fecharDetalhes()" class="text-slate-500"><i data-lucide="x"></i></button>
+                <h2 id="detalheNome" class="text-2xl font-bold text-white uppercase"></h2>
+                <button onclick="fecharDetalhes()" class="text-slate-400"><i data-lucide="x"></i></button>
             </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-8 text-center">
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+                    <p class="text-[10px] text-slate-500 uppercase font-black">Comprado</p>
+                    <h3 id="resumoComprado" class="text-xl font-bold text-white">R$ 0,00</h3>
+                </div>
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+                    <p class="text-[10px] text-slate-500 uppercase font-black">Pago</p>
+                    <h3 id="resumoPago" class="text-xl font-bold text-emerald-400">R$ 0,00</h3>
+                </div>
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-rose-500/30">
+                    <p class="text-[10px] text-slate-500 uppercase font-black">Saldo</p>
+                    <h3 id="resumoSaldo" class="text-xl font-bold text-rose-500">R$ 0,00</h3>
+                </div>
+            </div>
+
             <div id="extratoContent" class="space-y-3"></div>
         </div>
     </div>
 
     <script>
         window.clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
+        let idAtual = null;
 
         window.onload = () => {
             lucide.createIcons();
@@ -112,14 +120,16 @@
             
             window.clientes.filter(c => c.nome.toLowerCase().includes(busca))
             .forEach(c => {
-                const saldo = typeof c.saldo === 'number' ? c.saldo : 0;
+                const saldo = c.saldo || 0;
                 container.innerHTML += `
-                    <div class="glass-card p-4 flex justify-between items-center">
-                        <div onclick="verDetalhes(${c.id})" class="cursor-pointer">
-                            <h4 class="font-bold uppercase">${c.nome}</h4>
+                    <div class="glass-card p-5 flex justify-between items-center">
+                        <div onclick="verDetalhes(${c.id})" class="cursor-pointer flex-1">
+                            <h4 class="font-bold text-white uppercase">${c.nome}</h4>
                             <p class="text-xs text-slate-500">Saldo: R$ ${saldo.toFixed(2)}</p>
                         </div>
-                        <button onclick="excluirCliente(${c.id})" class="text-rose-500 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <div class="flex gap-2">
+                            <button onclick="excluirCliente(${c.id})" class="p-2 bg-rose-500/10 text-rose-500 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
                     </div>`;
             });
             lucide.createIcons();
@@ -127,39 +137,54 @@
 
         window.cadastrarCliente = () => {
             const nome = document.getElementById('inNome').value;
-            const venc = document.getElementById('inVenc').value;
-            if(!nome) return alert("Digite o nome");
-            
+            if(!nome) return alert("Nome é obrigatório");
             window.clientes.push({
                 id: Date.now(),
                 nome: nome,
-                vencimento: parseInt(venc) || 1,
+                apelido: document.getElementById('inApelido').value,
+                vencimento: parseInt(document.getElementById('inVenc').value) || 1,
                 saldo: 0,
+                totalPago: 0,
                 historico: []
             });
             salvar();
-            document.getElementById('inNome').value = "";
-            document.getElementById('inVenc').value = "";
+            ['inNome', 'inApelido', 'inVenc'].forEach(i => document.getElementById(i).value = "");
         };
 
         window.verDetalhes = (id) => {
             const c = window.clientes.find(x => x.id === id);
             if(!c) return;
+            idAtual = id;
             document.getElementById('detalheNome').innerText = c.nome;
             
+            // Cálculos para os cards de resumo (Igual sua Imagem 1)
+            const comprado = (c.historico || []).filter(h => h.tipo === 'venda').reduce((acc, h) => acc + (h.valor || 0), 0);
+            const pago = (c.historico || []).filter(h => h.tipo === 'pagamento').reduce((acc, h) => acc + (h.valor || 0), 0);
+            
+            document.getElementById('resumoComprado').innerText = `R$ ${comprado.toFixed(2)}`;
+            document.getElementById('resumoPago').innerText = `R$ ${pago.toFixed(2)}`;
+            document.getElementById('resumoSaldo').innerText = `R$ ${(comprado - pago).toFixed(2)}`;
+
             let html = "";
             (c.historico || []).forEach(h => {
                 const dataRaw = h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data);
-                const dataValida = isNaN(dataRaw) ? "Data n/d" : dataRaw.toLocaleDateString('pt-BR');
-                const valor = typeof h.valor === 'number' ? h.valor : 0;
+                const dataValida = isNaN(dataRaw) ? "---" : dataRaw.toLocaleDateString('pt-BR');
+                const isVenda = h.tipo === 'venda';
 
                 html += `
-                <div class="bg-slate-900/50 p-4 rounded-xl flex justify-between items-center border border-slate-800">
-                    <div>
-                        <p class="text-[10px] text-slate-500">${dataValida}</p>
-                        <p class="font-bold text-sm uppercase">${h.prod || 'Venda'}</p>
+                <div class="bg-slate-800/40 p-4 rounded-2xl flex justify-between items-center border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-lg ${isVenda ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">
+                            <i data-lucide="${isVenda ? 'shopping-bag' : 'check-circle'}" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-500 font-bold">${dataValida}</p>
+                            <p class="font-bold text-sm uppercase">${h.prod || (isVenda ? 'Venda' : 'Pagamento via Dinheiro')}</p>
+                        </div>
                     </div>
-                    <span class="font-bold text-emerald-400">R$ ${valor.toFixed(2)}</span>
+                    <span class="font-black ${isVenda ? 'text-white' : 'text-emerald-400'}">
+                        ${isVenda ? '' : '- '}R$ ${(h.valor || 0).toFixed(2)}
+                    </span>
                 </div>`;
             });
 
