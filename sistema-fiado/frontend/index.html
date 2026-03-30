@@ -187,18 +187,53 @@ async function salvarFirebase() {
     } catch (e) { console.error("Erro Firebase Save:", e); }
 }
 
+async function salvarFirebase() {
+    if (!window.db || !window.fb) return;
+    
+    // Pega a Key que o usuário usou para logar
+    const minhaKey = localStorage.getItem('ka_session') || "teste"; 
+    
+    try {
+        // Agora salva em 'base_CHAVE_DO_CLIENTE'
+        const colRef = window.fb.collection(window.db, `base_${minhaKey}`);
+        
+        const snapshot = await window.fb.getDocs(colRef);
+        // Limpa apenas a base deste usuário antes de salvar
+        for (const d of snapshot.docs) { 
+            await window.fb.deleteDoc(window.fb.doc(window.db, `base_${minhaKey}`, d.id)); 
+        }
+        for (let c of clientes) { 
+            await window.fb.addDoc(colRef, c); 
+        }
+    } catch (e) { console.error("Erro ao salvar base isolada:", e); }
+}
+
 async function carregarFirebase() {
     if (!window.db || !window.fb) return;
+    
+    const minhaKey = localStorage.getItem('ka_session') || "teste";
+
     try {
-        const snapshot = await window.fb.getDocs(window.fb.collection(window.db, "clientes"));
+        const colRef = window.fb.collection(window.db, `base_${minhaKey}`);
+        const snapshot = await window.fb.getDocs(colRef);
         const dados = snapshot.docs.map(doc => doc.data());
-        if (dados.length > 0) {
-            clientes = dados.map(c => ({...c, historico: c.historico || [], saldo: c.saldo || 0}));
+        
+        if (dados.length > 0) { 
+            // Garante que historico e saldo não venham vazios (evita erro de toFixed)
+            clientes = dados.map(c => ({
+                ...c, 
+                historico: c.historico || [], 
+                saldo: c.saldo || 0
+            })); 
             localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
+            render(); 
+            atualizarDashboard(); 
+        } else {
+            clientes = [];
             render();
             atualizarDashboard();
         }
-    } catch (e) { console.error("Erro Firebase Load:", e); }
+    } catch (e) { console.error("Erro ao carregar base isolada:", e); }
 }
 
 function cadastrarCliente() {
