@@ -158,9 +158,24 @@ window.onload = () => {
 };
 
 function autenticarKey() {
-    if(document.getElementById('keyInput').value.length > 2) {
-        localStorage.setItem('ka_session', '1');
+    // 1. Pega o valor real que você digitou na tela de bloqueio
+    const valorDaKey = document.getElementById('keyInput').value;
+    
+    if(valorDaKey.length > 2) {
+        // 2. LIMPEZA DE SEGURANÇA: Apaga os clientes da key anterior que ficaram no celular
+        localStorage.removeItem('fiado_db_v2');
+        clientes = []; 
+
+        // 3. SALVA A KEY REAL (em vez de salvar '1')
+        localStorage.setItem('ka_session', valorDaKey);
+        
+        // 4. Remove a tela de bloqueio e carrega os dados exclusivos dessa Key
         document.getElementById('lockScreen').remove();
+        
+        // Avisa ao Firebase para buscar a base certa agora
+        if(typeof carregarFirebase === "function") {
+            carregarFirebase();
+        }
     }
 }
 
