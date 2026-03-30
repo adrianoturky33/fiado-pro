@@ -151,267 +151,64 @@
     </div>
 
     <script>
-        let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
-        let idAtual = null; 
-        let carrinho = [];
+let clientes = JSON.parse(localStorage.getItem('fiado_db_v2')) || [];
+let idAtual = null; 
+let carrinho = [];
 
-        window.onload = () => {
-            if(localStorage.getItem('ka_session')) document.getElementById('lockScreen').remove();
-            lucide.createIcons();
-            render();
-            atualizarDashboard();
-        };
+window.onload = () => {
+    if(localStorage.getItem('ka_session')) {
+        document.getElementById('lockScreen').remove();
+    }
 
-        function autenticarKey() {
-            if(document.getElementById('keyInput').value.length > 2) {
-                localStorage.setItem('ka_session', '1');
-                document.getElementById('lockScreen').remove();
-            }
-        }
+    lucide.createIcons();
+    render();
+    atualizarDashboard();
 
-        function logout() { if(confirm("Sair do sistema?")) { localStorage.removeItem('ka_session'); location.reload(); } }
+    // 🔥 carregar firebase ao iniciar
+    carregarFirebase();
+};
 
-        // 🔥 SALVAR LOCAL + FIREBASE
+function autenticarKey() {
+    if(document.getElementById('keyInput').value.length > 2) {
+        localStorage.setItem('ka_session', '1');
+        document.getElementById('lockScreen').remove();
+    }
+}
+
+function logout() { 
+    if(confirm("Sair do sistema?")) { 
+        localStorage.removeItem('ka_session'); 
+        location.reload(); 
+    } 
+}
+
+// 🔥 SALVAR LOCAL + FIREBASE
 function salvar() {
     localStorage.setItem('fiado_db_v2', JSON.stringify(clientes));
-    salvarFirebase(); // novo
+    salvarFirebase();
     render(); 
     atualizarDashboard();
 }
 
-// 🔥 SALVAR NO FIREBASE
+// 🔥 SALVAR NO FIREBASE (SEM DUPLICAR BUGADO)
 async function salvarFirebase() {
     if (!window.db) return;
 
-    try {
-        for (let c of clientes) {
-            await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
-            .then(({ collection, addDoc }) => {
-                return addDoc(collection(window.db, "clientes"), c);
-            });
-        }
-    } catch (e) {
-        console.log("Erro Firebase:", e);
-    }
-}
-
-        function cadastrarCliente() {
-            const nome = document.getElementById('inNome').value;
-            const venc = document.getElementById('inVenc').value;
-            if(!nome || !venc) return alert("Preencha Nome e Vencimento!");
-
-            clientes.push({ 
-                id: Date.now(), 
-                nome, 
-                apelido: document.getElementById('inApelido').value,
-                telefone: document.getElementById('inTel').value,
-                vencimento: parseInt(venc),
-                saldo: 0, 
-                totalComprado: 0, 
-                totalPago: 0, 
-                historico: [] 
-            });
-
-            ['inNome','inApelido','inTel','inVenc'].forEach(id => document.getElementById(id).value = "");
-            salvar();
-        }
-
-        function render() {
-            const container = document.getElementById('listaClientes');
-            const busca = document.getElementById('inputBusca').value.toLowerCase();
-            const hoje = new Date().getDate();
-            container.innerHTML = "";
-            
-            clientes.filter(c => c.nome.toLowerCase().includes(busca) || (c.apelido && c.apelido.toLowerCase().includes(busca)))
-            .forEach(c => {
-                const atrasado = c.saldo > 0 && hoje > c.vencimento;
-                container.innerHTML += `
-                    <div class="card-cliente bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 flex justify-between items-center group animate-fade-in shadow-lg">
-                        <div onclick="verDetalhes(${c.id})" class="cursor-pointer flex-1">
-                            <h4 class="font-bold text-lg text-white uppercase">${c.nome} ${c.apelido ? `<span class="text-emerald-400 text-xs ml-2">[${c.apelido}]</span>` : ''}</h4>
-                            <p class="text-xs ${atrasado ? 'text-rose-500' : 'text-slate-500'} font-bold">Vencimento: Dia ${c.vencimento} • Saldo: R$ ${c.saldo.toFixed(2).replace('.',',')}</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="abrirVenda(${c.id})" class="p-3 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white rounded-xl transition-all"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
-                            <button onclick="abrirPagamento(${c.id})" class="p-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all"><i data-lucide="dollar-sign" class="w-5 h-5"></i></button>
-                            <button onclick="excluirCliente(${c.id})" class="p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                        </div>
-                    </div>
-                `;
-            });
-            lucide.createIcons();
-        }
-
-        function abrirVenda(id) { 
-            idAtual = id; carrinho = []; 
-            atualizarCarrinhoUI(); 
-            document.getElementById('modalVenda').classList.remove('hidden');
-            setTimeout(() => document.getElementById('vendaProd').focus(), 100);
-        }
-
-        function adicionarAoCarrinho() {
-            const n = document.getElementById('vendaProd').value;
-            const q = parseInt(document.getElementById('vendaQtd').value) || 1;
-            const p = parseFloat(document.getElementById('vendaPreco').value);
-            if(!n || !p) return;
-            carrinho.push({ nome: n, qtd: q, preco: p });
-            document.getElementById('vendaProd').value = "";
-            document.getElementById('vendaPreco').value = "";
-            document.getElementById('vendaProd').focus();
-            atualizarCarrinhoUI();
-        }
-
-        function atualizarCarrinhoUI() {
-            const div = document.getElementById('carrinhoTemp');
-            div.innerHTML = carrinho.map((i, idx) => `
-                <div class="flex justify-between items-center bg-slate-800 p-2 rounded-lg text-xs">
-                    <span>${i.qtd}x ${i.nome}</span>
-                    <span class="font-bold text-blue-400">R$ ${(i.qtd*i.preco).toFixed(2)}</span>
-                    <button onclick="carrinho.splice(${idx},1);atualizarCarrinhoUI()" class="text-rose-500"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
-                </div>`).join('');
-            const total = carrinho.reduce((acc, i) => acc + (i.qtd * i.preco), 0);
-            document.getElementById('totalVenda').innerText = `R$ ${total.toFixed(2).replace('.',',')}`;
-            lucide.createIcons();
-        }
-
-        function concluirVenda() {
-            if(carrinho.length === 0) return;
-            const c = clientes.find(x => x.id === idAtual);
-            const total = carrinho.reduce((acc, i) => acc + (i.qtd * i.preco), 0);
-            c.historico.unshift({ id: Date.now(), data: new Date(), tipo: 'venda', itens: [...carrinho], total: total });
-            c.saldo += total;
-            c.totalComprado += total;
-            fecharModais(); salvar();
-        }
-
-        function abrirPagamento(id) {
-            idAtual = id;
-            const c = clientes.find(x => x.id === id);
-            document.getElementById('pagaSaldoAtual').innerText = `R$ ${c.saldo.toFixed(2).replace('.',',')}`;
-            document.getElementById('modalPaga').classList.remove('hidden');
-            setTimeout(() => document.getElementById('pagaValor').focus(), 100);
-        }
-
-        function confirmarPagamento() {
-            const v = parseFloat(document.getElementById('pagaValor').value);
-            if(!v || v <= 0) return;
-            const c = clientes.find(x => x.id === idAtual);
-            c.historico.unshift({ id: Date.now(), data: new Date(), tipo: 'pagamento', valor: v, metodo: document.getElementById('pagaMetodo').value });
-            c.saldo -= v;
-            c.totalPago += v;
-            fecharModais(); salvar();
-        }
-
-        // FUNÇÃO ATUALIZADA COM QUANTIDADE DE PRODUTOS
-        function verDetalhes(id) {
-            const c = clientes.find(x => x.id === id);
-            idAtual = id;
-            document.getElementById('detalheNome').innerHTML = `${c.nome} <span class="text-slate-500 text-sm ml-2 font-normal">${c.telefone || ''}</span>`;
-            
-            let html = `
-                <div class="grid grid-cols-3 gap-4 mb-8">
-                    <div class="bg-slate-900/50 p-4 rounded-2xl text-center">
-                        <p class="text-[10px] text-slate-500 uppercase font-black">Comprado</p>
-                        <p class="text-xl font-bold">R$ ${c.totalComprado.toFixed(2)}</p>
-                    </div>
-                    <div class="bg-slate-900/50 p-4 rounded-2xl text-center">
-                        <p class="text-[10px] text-slate-500 uppercase font-black">Pago</p>
-                        <p class="text-xl font-bold text-emerald-400">R$ ${c.totalPago.toFixed(2)}</p>
-                    </div>
-                    <div class="bg-slate-900/50 p-4 rounded-2xl text-center border border-slate-700">
-                        <p class="text-[10px] text-slate-500 uppercase font-black">Saldo</p>
-                        <p class="text-xl font-bold text-rose-500">R$ ${c.saldo.toFixed(2)}</p>
-                    </div>
-                </div>
-                <div class="space-y-3">
-            `;
-
-            c.historico.forEach(h => {
-                const isV = h.tipo === 'venda';
-                
-                // Lógica para mostrar quantidade x nome (Ex: 2x ARROZ)
-                const descricao = isV 
-                    ? h.itens.map(i => `<span class="text-blue-400 font-mono">${i.qtd}x</span> ${i.nome}`).join(', ')
-                    : 'Pagamento via ' + h.metodo;
-
-                html += `
-                <div class="bg-slate-800/30 p-4 rounded-2xl flex justify-between items-center border border-slate-800 hover:border-slate-700 transition-all">
-                    <div class="flex items-center gap-4">
-                        <div class="p-2 rounded-xl ${isV ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">
-                            <i data-lucide="${isV ? 'shopping-bag' : 'check-circle'}" class="w-5 h-5"></i>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-slate-500">${new Date(h.data).toLocaleString('pt-BR')}</p>
-                            <p class="text-sm font-bold uppercase tracking-tight">${descricao}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-6">
-                        <span class="text-lg font-black ${isV ? 'text-white' : 'text-emerald-400'}">
-                            ${isV ? '' : '-'} R$ ${(isV ? h.total : h.valor).toFixed(2)}
-                        </span>
-                        <button onclick="removerTransacao(${c.id}, ${h.id})" class="text-slate-600 hover:text-rose-500 transition-colors">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                </div>`;
-            });
-
-            const container = document.getElementById('extratoContent');
-            container.innerHTML = html + (c.historico.length === 0 ? '<p class="text-center text-slate-500 py-10">Nenhuma movimentação encontrada.</p>' : '') + `</div>`;
-            
-            document.getElementById('secaoDetalhes').classList.remove('hidden');
-            window.scrollTo({ top: document.getElementById('secaoDetalhes').offsetTop - 20, behavior: 'smooth' });
-            lucide.createIcons();
-        }
-
-        // Função para remover uma venda ou pagamento específico
-        function removerTransacao(clienteId, transacaoId) {
-            if(!confirm("Remover esta transação do histórico?")) return;
-            const c = clientes.find(x => x.id === clienteId);
-            const tIndex = c.historico.findIndex(x => x.id === transacaoId);
-            const t = c.historico[tIndex];
-
-            if(t.tipo === 'venda') {
-                c.saldo -= t.total;
-                c.totalComprado -= t.total;
-            } else {
-                c.saldo += t.valor;
-                c.totalPago -= t.valor;
-            }
-
-            c.historico.splice(tIndex, 1);
-            salvar();
-            verDetalhes(clienteId);
-        }
-
-        function excluirCliente(id) { if(confirm("Apagar cliente permanentemente?")) { clientes = clientes.filter(c => c.id !== id); salvar(); fecharDetalhes(); } }
-        function fecharModais() { document.querySelectorAll('#modalVenda, #modalPaga').forEach(m => m.classList.add('hidden')); }
-        function fecharDetalhes() { document.getElementById('secaoDetalhes').classList.add('hidden'); }
-        
-        function atualizarDashboard() {
-            let total = 0, atrasados = 0;
-            const hoje = new Date().getDate();
-            clientes.forEach(c => {
-                total += c.saldo;
-                if(c.saldo > 0 && hoje > c.vencimento) atrasados++;
-            });
-            document.getElementById('dashTotal').innerText = `R$ ${total.toFixed(2).replace('.',',')}`;
-            document.getElementById('dashAtrasados').innerText = atrasados;
-
-            
-
-            // 🔥 SINCRONIZAR COM FIREBASE (SEM QUEBRAR SISTEMA)
-
-async function salvarFirebase() {
-    if (!window.db) return;
+    const { collection, getDocs, deleteDoc, doc, addDoc } =
+        await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
     try {
-        for (let c of clientes) {
-            await window.firebaseUtils.addDoc(
-                window.firebaseUtils.collection(window.db, "clientes"),
-                c
-            );
+        // limpa coleção antes (evita duplicação)
+        const snapshot = await getDocs(collection(window.db, "clientes"));
+        for (const d of snapshot.docs) {
+            await deleteDoc(doc(window.db, "clientes", d.id));
         }
+
+        // salva novamente
+        for (let c of clientes) {
+            await addDoc(collection(window.db, "clientes"), c);
+        }
+
     } catch (e) {
         console.log("Erro Firebase:", e);
     }
@@ -421,9 +218,10 @@ async function salvarFirebase() {
 async function carregarFirebase() {
     if (!window.db) return;
 
-    try {
-        const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const { collection, getDocs } =
+        await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
+    try {
         const snapshot = await getDocs(collection(window.db, "clientes"));
         const dados = snapshot.docs.map(doc => doc.data());
 
@@ -436,22 +234,7 @@ async function carregarFirebase() {
         console.log("Erro ao carregar Firebase:", e);
     }
 }
-
-// 🔥 CARREGA AUTOMATICAMENTE AO ABRIR
-window.addEventListener("load", () => {
-    setTimeout(() => {
-        carregarFirebase();
-    }, 500);
-});
-
-// 🔥 SALVA JUNTO COM LOCAL
-const salvarOriginal = salvar;
-salvar = function() {
-    salvarOriginal();
-    salvarFirebase();
-};
-        }
-    </script>
+</script>
 
 
 </body>
